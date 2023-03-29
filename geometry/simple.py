@@ -263,39 +263,35 @@ class lodtexquad(texquad):
         } """
 
 class blurtexquad(texquad):
+    dstblend = gl.GL_ONE
+    uniforms = { 'uniform' : 4 }
     fragment_code = """
         uniform sampler2D tex;
+        uniform highp vec2 blurvector;
+        uniform highp float gain;
         out highp vec4 f_color;
         in highp vec2 v_texcoor;
-        
+
         void main()
         {
-            highp vec4 acc;
+            highp vec4 acc = vec4(0.0);
             lowp float n = 0.0;
-            for(int i = - 8; i < 9; i++) {
-                lowp float weight = 1.0; //8.0 - abs(float(i));
-                acc += textureLod(tex, v_texcoor + vec2(0.01*float(i)/8.0, 0.0), 0.0) * weight;
-                n += weight;
+            for(int i = -8; i <= 8; i++) {
+                highp float weight = 1.0 - (abs(float(i)) / 8.0);
+                highp vec4 samp = textureLod(tex, v_texcoor + blurvector * float(i)/8.0, 3.0) * weight;
+                samp -= vec4(0.1, 0.1, 0.1, 0.0);
+                acc += clamp(samp, 0.0, 1.0);
+                n = n + weight;
             }
             
-            f_color = 1.4 * acc / n;
+            f_color = gain * acc / n;
         } """
 
-class vblurtexquad(texquad):
-    fragment_code = """
-        uniform sampler2D tex;
-        out highp vec4 f_color;
-        in highp vec2 v_texcoor;
-        
-        void main()
-        {
-            highp vec4 acc;
-            lowp float n = 0.0;
-            for(int i = - 8; i < 9; i++) {
-                lowp float weight = 1.0; //8.0 - abs(float(i));
-                acc += textureLod(tex, v_texcoor + vec2(0.0, 0.01*float(i)/8.0), 0.0) * weight;
-                n += weight;
-            }
-            
-            f_color = 1.4 * acc / n;
-        } """
+    def __init__(self, blurvector, gain):
+        self.blurvector = blurvector
+        self.gain = gain
+        super().__init__()
+
+    def getUniforms(self):
+        return { 'gain': (self.gain,), 'blurvector': self.blurvector }
+

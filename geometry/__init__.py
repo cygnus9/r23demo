@@ -35,6 +35,7 @@ class base(object):
         } """
 
     attributes = { 'color' : 4, 'position' : 2 }
+    uniforms = { }
     instanceAttributes = {}
     primitive = gl.GL_TRIANGLES
     srcblend = gl.GL_SRC_ALPHA
@@ -68,6 +69,10 @@ class base(object):
         
     def getInstances(self):
         """Override for instancing"""
+        return {}
+
+    def getUniforms(self):
+        """Override for uniforms"""
         return {}
         
     def reloadInstanceData(self):
@@ -105,6 +110,12 @@ class base(object):
 
         # Build program
         gl.glLinkProgram(program)
+        log = gl.glGetProgramInfoLog(program)
+        if log:
+            print('Shader link')
+            print(self.fragment_code)
+            print(log.decode('ascii'))
+            raise RuntimeError('Shader compiliation failed')
 
         # Get rid of shaders (no more needed)
         gl.glDetachShader(program, vertex)
@@ -197,6 +208,18 @@ class base(object):
         gl.glUniform4fv(loc, 1, self.color)
 
         gl.glBlendFunc(self.srcblend, self.dstblend)
+
+        for uniform, value in self.getUniforms().items():
+            loc = gl.glGetUniformLocation(self.program, uniform)
+            if len(value) == 1:
+                gl.glUniform1fv(loc, 1, value)
+            if len(value) == 2:
+                gl.glUniform2fv(loc, 1, value)
+            if len(value) == 3:
+                gl.glUniform3fv(loc, 1, value)
+            if len(value) == 4:
+                gl.glUniform4fv(loc, 1, value)
+
         for attrib in self.attributes:
             loc = gl.glGetAttribLocation(self.program, attrib)
             if loc < 0:

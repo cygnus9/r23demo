@@ -77,7 +77,13 @@ def display():
     gl.glClear(gl.GL_COLOR_BUFFER_BIT| gl.GL_DEPTH_BUFFER_BIT)
 
     gl.glViewport(0, 0, screenWidth, screenHeight)
+
+    with hbloomfbo:
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT| gl.GL_DEPTH_BUFFER_BIT)
+        hbloomquad.render()
+
     texquad.render()
+    vbloomquad.render()
 
     glut.glutSwapBuffers()
     glut.glutPostRedisplay()
@@ -119,10 +125,15 @@ glut.glutKeyboardFunc(keyboard)
 
 # Primary offscreen framebuffer
 mainfbo = fbo.FBO(512, 512)
+hbloomfbo = fbo.FBO(512, 512)
 
 # Emulation shader
 texquad = geometry.simple.texquad()
 texquad.setTexture(mainfbo.getTexture())
+hbloomquad = geometry.simple.blurtexquad(gain = 2, blurvector = (.1, 0))
+hbloomquad.setTexture(mainfbo.getTexture())
+vbloomquad = geometry.simple.blurtexquad(gain = 2, blurvector = (0, .1))
+vbloomquad.setTexture(hbloomfbo.getTexture())
 
 # Effect
 import assembly.newyear
