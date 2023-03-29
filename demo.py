@@ -67,6 +67,10 @@ def display():
     with mainfbo:
         clear()
         t = reltime()
+        modelview = np.eye(4, dtype=np.float32)
+        transforms.yrotate(modelview, t*30)
+        transforms.translate(modelview, 1, 1, -100)
+        effect.setModelView(modelview)
         effect.render(t)
         
     gl.glClearColor(0, 0, 0, 0)
@@ -120,15 +124,13 @@ mainfbo = fbo.FBO(512, 512)
 texquad = geometry.simple.texquad()
 texquad.setTexture(mainfbo.getTexture())
 
-# Projection matrix
-M = np.eye(4, dtype=np.float32)
-transforms.scale(M, 1, 1, 1)
-
 # Effect
 import assembly.newyear
 
 effect = assembly.newyear.newyear()
-effect.setProjection(M)
+import pyrr
+projection = pyrr.matrix44.create_perspective_projection(30, 1, 0.1, 1000)
+effect.setProjection(projection)
 
 if args.music:
 	start_music()
