@@ -82,6 +82,7 @@ def display():
         gl.glClear(gl.GL_COLOR_BUFFER_BIT| gl.GL_DEPTH_BUFFER_BIT)
         hbloomquad.render()
 
+    texquad.color = (0.05, 0.05, 0.05, 1.0)
     texquad.render()
     vbloomquad.render()
 
@@ -130,10 +131,12 @@ hbloomfbo = fbo.FBO(512, 512)
 # Emulation shader
 texquad = geometry.simple.texquad()
 texquad.setTexture(mainfbo.getTexture())
-hbloomquad = geometry.simple.blurtexquad(gain = 2, blurvector = (.1, 0))
+hbloomquad = geometry.simple.blurtexquad(gain = .2, blurvector = (0.1, 0))
 hbloomquad.setTexture(mainfbo.getTexture())
-vbloomquad = geometry.simple.blurtexquad(gain = 2, blurvector = (0, .1))
+vbloomquad = geometry.simple.blurtexquad(gain = .2, blurvector = (0, 0.1))
 vbloomquad.setTexture(hbloomfbo.getTexture())
+
+gl.glEnable(gl.GL_FRAMEBUFFER_SRGB);
 
 # Effect
 import assembly.newyear

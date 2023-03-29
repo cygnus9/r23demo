@@ -34,10 +34,10 @@ class newyear(assembly.assembly):
             {
                 highp vec4 worldPos = modelview * vec4(center, 1.0);
                 highp float scale = abs((worldPos.z + 100.0) * 0.2);
-                scale = max(scale, 0.5);
+                scale = max(scale, .5);
                 gl_Position = (projection * worldPos) + vec4(position, 0.0, 0.0) * scale * 2.0;
-                highp float brightness = min(3.0, 3.0/pow(scale, 2.0));
-                v_color =  objcolor * color * vec4(1.0,1.0,1.0,brightness);
+                highp float brightness = 1.0/pow(scale, 4.0);
+                v_color =  objcolor * color * vec4(vec3(brightness), 1.0);
                 v_texcoor = position;
             } 
         """
@@ -49,7 +49,7 @@ class newyear(assembly.assembly):
 
             void main()
             {
-                f_color = vec4(v_color.rgb * v_color.a * pow((1.0 - length(v_texcoor)),0.25), 1.0);
+                f_color = vec4(clamp(v_color.rgb * v_color.a * pow((1.0 - length(v_texcoor)),0.25), 0.0, 10.0), 1.0);
             } """
 
         def __init__(self):
@@ -94,12 +94,12 @@ class newyear(assembly.assembly):
             self.dx *= 1 - (slowfactor * abs(self.dx))
             self.dy *= 1 - (slowfactor * abs(self.dy))
             self.dz *= 1 - (slowfactor * abs(self.dz))
-            self.dy -= 15 * dt
+            #self.dy -= 15 * dt
 
             reltime = t - self.start
             alpha = math.fabs((self.life)-reltime) 
-            alpha *= ((1 + (math.sin((reltime + self.shift) * 10))) / 10.0) + 0.2
-            self.color = self.basecolor + (alpha/4,)
+            alpha *= ((1 + (math.sin((reltime + self.shift) * 10))) / 10.0)
+            self.color = self.basecolor + (alpha,)
 
     def __init__(self):
         self.stars = []
@@ -123,7 +123,7 @@ class newyear(assembly.assembly):
         dy += w*math.sin(a)
         dz += w*math.sin(a+math.pi)
         
-        color = random.choice([(1,0.8,0.2), (1,0.9,0.6)])
+        color = random.choice([(8.0,6.4,1.6), (8,7.2,4.8)])
 
         self.stars.append(newyear.AnimatedStar(t, x, y, z, dx, dy, dz, self.life, color))
 

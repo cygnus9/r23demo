@@ -276,11 +276,11 @@ class blurtexquad(texquad):
         {
             highp vec4 acc = vec4(0.0);
             lowp float n = 0.0;
-            for(int i = -8; i <= 8; i++) {
-                highp float weight = 1.0 - (abs(float(i)) / 8.0);
-                highp vec4 samp = textureLod(tex, v_texcoor + blurvector * float(i)/8.0, 3.0) * weight;
-                samp -= vec4(0.1, 0.1, 0.1, 0.0);
-                acc += clamp(samp, 0.0, 1.0);
+            for(int i = -16; i <= 16; i++) {
+                highp float weight = 1.0 - (abs(float(i)) / 16.0);
+                highp vec4 samp = textureLod(tex, v_texcoor + blurvector * float(i)/16.0, 0.0) * weight;
+                //samp -= vec4(1.0, 1.0, 1.0, 0.0);
+                acc += clamp(samp, 0.0, 100.0);
                 n = n + weight;
             }
             
