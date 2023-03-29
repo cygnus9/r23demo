@@ -17,7 +17,7 @@ class newyear(assembly.assembly):
         srcblend = gl.GL_SRC_ALPHA
         dstblend = gl.GL_ONE
 
-        instanceAttributes = { 'offset' : 2, 'color' : 4 }
+        instanceAttributes = { 'center' : 2, 'color' : 4 }
         attributes = { 'position' : 2 }
 
         vertex_code = """
@@ -27,14 +27,26 @@ class newyear(assembly.assembly):
 
             in highp vec4 color;
             in highp vec2 position;
-            in highp vec2 offset;
+            in highp vec2 center;
             out highp vec4 v_color;
+            out highp vec2 v_texcoor;
             void main()
             {
-                gl_Position = projection * modelview * vec4(position + offset,0.0,1.0);
+                gl_Position = projection * modelview * vec4(position + center,0.0,1.0);
                 v_color =  objcolor * color;
+                v_texcoor = position;
             } 
         """
+
+        fragment_code = """
+            in highp vec4 v_color;
+            in highp vec2 v_texcoor;
+            out highp vec4 f_color;
+
+            void main()
+            {
+                f_color = vec4(v_color.rgb * v_color.a * pow((1.0 - length(v_texcoor)),0.05), 1.0);
+            } """
 
         def __init__(self):
             self.starcolor = (1,1,1,1)
@@ -55,7 +67,7 @@ class newyear(assembly.assembly):
             self.reloadInstanceData()
 
         def getInstances(self):
-            return { 'offset' : self.positions, 'color' : self.colors }
+            return { 'center' : self.positions, 'color' : self.colors }
 
     class AnimatedStar:
         def __init__(self, start, x, y, dx, dy, life, basecolor):
@@ -77,7 +89,7 @@ class newyear(assembly.assembly):
             reltime = t - self.start
             alpha = math.fabs((self.life)-reltime) 
             alpha *= ((1 + (math.sin((reltime + self.shift) * 10))) / 10.0) + 0.2
-            self.color = self.basecolor + (alpha/2,)
+            self.color = self.basecolor + (alpha/4,)
 
     def __init__(self):
         self.stars = []

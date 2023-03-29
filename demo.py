@@ -90,7 +90,7 @@ def reshape(width,height):
 
 def keyboard( key, x, y ):
     if key == b'\033':
-        sys.exit( )
+        glut.glutLeaveMainLoop()
 		
     if key == b' ':
         print('%d', pygame.mixer.music.get_pos())
@@ -107,7 +107,7 @@ args = parser.parse_args()
 glut.glutInit()
 glut.glutInitDisplayMode(glut.GLUT_DOUBLE | glut.GLUT_RGBA)
 glut.glutCreateWindow(b'Amazing ws2811 VGA renderer')
-glut.glutReshapeWindow(1000,1000)
+glut.glutReshapeWindow(512,512)
 
 glut.glutReshapeFunc(reshape)
 glut.glutDisplayFunc(display)
