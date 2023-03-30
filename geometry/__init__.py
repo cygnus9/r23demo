@@ -236,7 +236,7 @@ class base(object):
             gl.glEnableVertexAttribArray(loc)
             gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.instanceBuffer)
             gl.glVertexAttribPointer(loc, self.instanceAttributes[attrib], gl.GL_FLOAT, False, self.instanceStride, self.instanceOffsets[attrib])
-            gl.glVertexAttribDivisor(loc, 1); 
+            gl.glVertexAttribDivisor(loc, 1);
             
         self.draw()
         

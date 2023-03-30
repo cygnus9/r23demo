@@ -274,17 +274,19 @@ class blurtexquad(texquad):
 
         void main()
         {
-            highp vec4 acc = vec4(0.0);
+            highp vec3 acc = vec3(0.0);
             lowp float n = 0.0;
             for(int i = -16; i <= 16; i++) {
                 highp float weight = 1.0 - (abs(float(i)) / 16.0);
-                highp vec4 samp = textureLod(tex, v_texcoor + blurvector * float(i)/16.0, 0.0) * weight;
+                highp vec3 samp = textureLod(tex, v_texcoor + blurvector * float(i)/16.0, 0.0).rgb * weight;
                 //samp -= vec4(1.0, 1.0, 1.0, 0.0);
-                acc += clamp(samp, 0.0, 100.0);
+                samp = clamp(samp, 0.0, 100.0);
+                //samp = pow(samp, vec3(1.0/2.2));
+                acc += samp;
                 n = n + weight;
             }
             
-            f_color = gain * acc / n;
+            f_color = vec4(clamp(gain * acc / n, 0.0, 1.0), 1.0);
         } """
 
     def __init__(self, blurvector, gain):

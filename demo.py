@@ -82,7 +82,7 @@ def display():
         gl.glClear(gl.GL_COLOR_BUFFER_BIT| gl.GL_DEPTH_BUFFER_BIT)
         hbloomquad.render()
 
-    texquad.color = (0.05, 0.05, 0.05, 1.0)
+    texquad.color = (0.08, 0.08, 0.08, 1.0)
     texquad.render()
     vbloomquad.render()
 

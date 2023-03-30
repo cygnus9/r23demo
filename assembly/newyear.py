@@ -36,7 +36,7 @@ class newyear(assembly.assembly):
                 highp float scale = abs((worldPos.z + 100.0) * 0.2);
                 scale = max(scale, .5);
                 gl_Position = (projection * worldPos) + vec4(position, 0.0, 0.0) * scale * 2.0;
-                highp float brightness = 1.0/pow(scale, 4.0);
+                highp float brightness = 1.0/pow(scale, 2.0);
                 v_color =  objcolor * color * vec4(vec3(brightness), 1.0);
                 v_texcoor = position;
             } 
