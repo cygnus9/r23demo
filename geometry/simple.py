@@ -84,16 +84,10 @@ class texquad(geometry.base):
         coors = [(0, 0), (1, 0), (1, 1), (0, 1)]
         
         return { 'position' : verts, 'texcoor' : coors }
-        
-    def draw(self):
-        loc = gl.glGetUniformLocation(self.program, "tex")
-        gl.glUniform1i(loc, 0)
-        gl.glActiveTexture(gl.GL_TEXTURE0)
-        gl.glBindTexture(gl.GL_TEXTURE_2D, self.tex)
-#        gl.glGenerateMipmap(gl.GL_TEXTURE_2D)
-        
-        super(texquad, self).draw()
 
+    def getTextures(self):
+        return { 'tex' : self.tex }
+        
     def setTexture(self, tex):
         self.tex = tex
 
@@ -161,15 +155,9 @@ class ballquad(geometry.base):
         coors = [(0, 0), (1, 0), (1, 1), (0, 1)]
         
         return { 'position' : verts, 'texcoor' : coors }
-        
-    def draw(self):
-        loc = gl.glGetUniformLocation(self.program, "tex")
-        gl.glUniform1i(loc, 0)
-        gl.glActiveTexture(gl.GL_TEXTURE0)
-        gl.glBindTexture(gl.GL_TEXTURE_2D, self.tex)
-#        gl.glGenerateMipmap(gl.GL_TEXTURE_2D)
-        
-        super(texquad, self).draw()
+
+    def getTextures(self):
+        return { 'tex' : self.tex }
 
     def setTexture(self, tex):
         self.tex = tex
@@ -236,14 +224,9 @@ class copper(texquad):
         
         return { 'position' : verts, 'texcoor' : coors }
 
-    def draw(self):
-        loc = gl.glGetUniformLocation(self.program, "direction")
-        gl.glUniform2f(loc, self.direction[0], self.direction[1])
-        loc = gl.glGetUniformLocation(self.program, "color")
-        gl.glUniform4f(loc, self.color[0], self.color[1], self.color[2], 1)
-        
-        super(copper, self).draw()
-        
+    def getUniforms(self):
+        return { 'direction' : self.direction, 'color': self.color }
+
     def setDirection(self, v):
         self.direction = v
 
@@ -264,13 +247,14 @@ class lodtexquad(texquad):
 
 class blurtexquad(texquad):
     dstblend = gl.GL_ONE
-    uniforms = { 'uniform' : 4 }
+
     fragment_code = """
         uniform sampler2D tex;
         uniform highp vec2 blurvector;
         uniform highp float gain;
         out highp vec4 f_color;
         in highp vec2 v_texcoor;
+        in highp vec4 v_color;
 
         void main()
         {
@@ -278,15 +262,13 @@ class blurtexquad(texquad):
             lowp float n = 0.0;
             for(int i = -16; i <= 16; i++) {
                 highp float weight = 1.0 - (abs(float(i)) / 16.0);
-                highp vec3 samp = textureLod(tex, v_texcoor + blurvector * float(i)/16.0, 0.0).rgb * weight;
-                //samp -= vec4(1.0, 1.0, 1.0, 0.0);
-                samp = clamp(samp, 0.0, 100.0);
-                //samp = pow(samp, vec3(1.0/2.2));
-                acc += samp;
+                highp vec3 samp = textureLod(tex, v_texcoor + blurvector * float(i)/16.0, 0.0).rgb;
+                samp = clamp(samp - vec3(1.0), 0.0, 100.0);
+                acc += samp * weight;
                 n = n + weight;
             }
             
-            f_color = vec4(clamp(gain * acc / n, 0.0, 1.0), 1.0);
+            f_color = v_color * vec4(gain * acc / n, 1.0);
         } """
 
     def __init__(self, blurvector, gain):

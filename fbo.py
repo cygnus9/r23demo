@@ -18,16 +18,16 @@ class FBO:
 
         self.fbo = glGenFramebuffers(1)
         
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo);
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
         
-        glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.tex, 0);
+        glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.tex, 0)
         
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
         
     def __enter__(self):
         glPushAttrib(GL_VIEWPORT_BIT)
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo);
-        glViewport(0, 0, self.width, self.height);
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
+        glViewport(0, 0, self.width, self.height)
         
     def __exit__(self, type, value, traceback):
         glGenerateMipmap(GL_TEXTURE_2D)

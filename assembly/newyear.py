@@ -10,7 +10,7 @@ from datetime import datetime
 
 class newyear(assembly.assembly):
     freq = 140
-    life = 4
+    life = 8
 
     class Stars(geometry.base):
         primitive = gl.GL_QUADS
@@ -49,7 +49,7 @@ class newyear(assembly.assembly):
 
             void main()
             {
-                f_color = vec4(clamp(v_color.rgb * v_color.a * pow((1.0 - length(v_texcoor)),0.25), 0.0, 10.0), 1.0);
+                f_color = vec4(v_color.rgb * v_color.a * clamp(pow((1.0 - length(v_texcoor)),0.5), 0.0, 1.0), 1.0);
             } """
 
         def __init__(self):
@@ -145,12 +145,15 @@ class newyear(assembly.assembly):
         dt = t - self.last
         x,y,z = self.getCenter(t)
 
-        if int(t*self.freq) > int(self.last*self.freq) and dt > 0:
-            dx = (x - self.lastx)/dt
-            dy = (y - self.lasty)/dt
-            dz = (z - self.lastz)/dt
+        n = int(t*self.freq) - int(self.last*self.freq)
 
-            self.addstar(t, dx, dy, dz)
+        if n > 0 and dt > 0:
+            for i in range(0, n):
+                dx = (x - self.lastx)/dt
+                dy = (y - self.lasty)/dt
+                dz = (z - self.lastz)/dt
+
+                self.addstar(t, dx, dy, dz)
 
         self.lastx = x
         self.lasty = y

@@ -74,6 +74,10 @@ class base(object):
     def getUniforms(self):
         """Override for uniforms"""
         return {}
+
+    def getTextures(self):
+        """Override for texture samplers"""
+        return {}
         
     def reloadInstanceData(self):
         self.instances = self.loadAttribData(self.instanceBuffer, self.instanceAttributes, self.getInstances())
@@ -220,6 +224,14 @@ class base(object):
             if len(value) == 4:
                 gl.glUniform4fv(loc, 1, value)
 
+        texunit = 0
+        for tex, value in self.getTextures().items():
+            loc = gl.glGetUniformLocation(self.program, tex)
+            gl.glUniform1i(loc, texunit)
+            gl.glActiveTexture(gl.GL_TEXTURE0 + texunit)
+            gl.glBindTexture(gl.GL_TEXTURE_2D, value)
+            texunit += 1 # Each texture is assigned to another texture unit
+
         for attrib in self.attributes:
             loc = gl.glGetAttribLocation(self.program, attrib)
             if loc < 0:
@@ -236,7 +248,7 @@ class base(object):
             gl.glEnableVertexAttribArray(loc)
             gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.instanceBuffer)
             gl.glVertexAttribPointer(loc, self.instanceAttributes[attrib], gl.GL_FLOAT, False, self.instanceStride, self.instanceOffsets[attrib])
-            gl.glVertexAttribDivisor(loc, 1);
+            gl.glVertexAttribDivisor(loc, 1)
             
         self.draw()
         

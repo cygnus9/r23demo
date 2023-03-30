@@ -68,7 +68,7 @@ def display():
         clear()
         t = reltime()
         modelview = np.eye(4, dtype=np.float32)
-        transforms.yrotate(modelview, t*30)
+        transforms.yrotate(modelview, t*1)
         transforms.translate(modelview, 1, 1, -100)
         effect.setModelView(modelview)
         effect.render(t)
@@ -84,6 +84,7 @@ def display():
 
     texquad.color = (0.08, 0.08, 0.08, 1.0)
     texquad.render()
+    vbloomquad.color = (0.001, 0.001, 0.001, 1.0)
     vbloomquad.render()
 
     glut.glutSwapBuffers()
@@ -118,22 +119,22 @@ args = parser.parse_args()
 glut.glutInit()
 glut.glutInitDisplayMode(glut.GLUT_DOUBLE | glut.GLUT_RGBA)
 glut.glutCreateWindow(b'Amazing ws2811 VGA renderer')
-glut.glutReshapeWindow(512,512)
+glut.glutReshapeWindow(1024,1024)
 
 glut.glutReshapeFunc(reshape)
 glut.glutDisplayFunc(display)
 glut.glutKeyboardFunc(keyboard)
 
 # Primary offscreen framebuffer
-mainfbo = fbo.FBO(512, 512)
+mainfbo = fbo.FBO(1024, 1024)
 hbloomfbo = fbo.FBO(512, 512)
 
 # Emulation shader
 texquad = geometry.simple.texquad()
 texquad.setTexture(mainfbo.getTexture())
-hbloomquad = geometry.simple.blurtexquad(gain = .2, blurvector = (0.1, 0))
+hbloomquad = geometry.simple.blurtexquad(gain = 5, blurvector = (0.1, 0))
 hbloomquad.setTexture(mainfbo.getTexture())
-vbloomquad = geometry.simple.blurtexquad(gain = .2, blurvector = (0, 0.1))
+vbloomquad = geometry.simple.blurtexquad(gain = 5, blurvector = (0, 0.1))
 vbloomquad.setTexture(hbloomfbo.getTexture())
 
 gl.glEnable(gl.GL_FRAMEBUFFER_SRGB);
