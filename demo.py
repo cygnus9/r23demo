@@ -64,15 +64,18 @@ def clear():
 def display():
     global args, mainfbo, texquad, signalgenerator
 
+    t = reltime()
+
+
     with mainfbo:
         clear()
-        t = reltime()
         modelview = np.eye(4, dtype=np.float32)
-        transforms.yrotate(modelview, t*1)
+        transforms.yrotate(modelview, t*30)
         transforms.translate(modelview, 1, 1, -100)
         effect.setModelView(modelview)
         effect.render(t)
-        
+        effect.step(t)
+
     gl.glClearColor(0, 0, 0, 0)
     gl.glClear(gl.GL_COLOR_BUFFER_BIT| gl.GL_DEPTH_BUFFER_BIT)
 
@@ -84,7 +87,7 @@ def display():
 
     texquad.color = (0.08, 0.08, 0.08, 1.0)
     texquad.render()
-    vbloomquad.color = (0.001, 0.001, 0.001, 1.0)
+    vbloomquad.color = (0.002, 0.002, 0.002, 1.0)
     vbloomquad.render()
 
     glut.glutSwapBuffers()
@@ -137,7 +140,7 @@ hbloomquad.setTexture(mainfbo.getTexture())
 vbloomquad = geometry.simple.blurtexquad(gain = 5, blurvector = (0, 0.1))
 vbloomquad.setTexture(hbloomfbo.getTexture())
 
-gl.glEnable(gl.GL_FRAMEBUFFER_SRGB);
+gl.glEnable(gl.GL_FRAMEBUFFER_SRGB)
 
 # Effect
 import assembly.newyear

@@ -8,6 +8,7 @@ class FBO:
         self.width = width
         self.height = height
         self.tex = glGenTextures(1)
+        self.prevBuffer = 0
 
         glBindTexture(GL_TEXTURE_2D, self.tex);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
@@ -26,12 +27,13 @@ class FBO:
         
     def __enter__(self):
         glPushAttrib(GL_VIEWPORT_BIT)
+        self.prevBuffer = glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING)
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
         glViewport(0, 0, self.width, self.height)
         
     def __exit__(self, type, value, traceback):
         glGenerateMipmap(GL_TEXTURE_2D)
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.prevBuffer)
         glPopAttrib()
         
     def bind(self):

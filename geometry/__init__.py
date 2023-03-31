@@ -227,9 +227,12 @@ class base(object):
         texunit = 0
         for tex, value in self.getTextures().items():
             loc = gl.glGetUniformLocation(self.program, tex)
+            if loc < 0:
+                raise RuntimeError('Sampler %s not found in program' % tex)
             gl.glUniform1i(loc, texunit)
             gl.glActiveTexture(gl.GL_TEXTURE0 + texunit)
             gl.glBindTexture(gl.GL_TEXTURE_2D, value)
+            gl.glBindSampler(texunit, 0)
             texunit += 1 # Each texture is assigned to another texture unit
 
         for attrib in self.attributes:
@@ -251,6 +254,7 @@ class base(object):
             gl.glVertexAttribDivisor(loc, 1)
             
         self.draw()
+        gl.glUseProgram(0)
         
     def draw(self):
         gl.glDrawArraysInstanced(self.primitive, 0, self.vertices, self.instances)
