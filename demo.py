@@ -129,7 +129,7 @@ glut.glutDisplayFunc(display)
 glut.glutKeyboardFunc(keyboard)
 
 # Primary offscreen framebuffer
-mainfbo = fbo.FBO(1024, 1024)
+mainfbo = fbo.FBO(1920, 1080)
 hbloomfbo = fbo.FBO(512, 512)
 
 # Emulation shader
@@ -147,7 +147,7 @@ import assembly.newyear
 
 effect = assembly.newyear.newyear()
 import pyrr
-projection = pyrr.matrix44.create_perspective_projection(30, 1, 0.1, 1000)
+projection = pyrr.matrix44.create_perspective_projection(30, 1920/1080, 0.1, 1000)
 effect.setProjection(projection)
 
 if args.music:
