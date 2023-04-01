@@ -43,7 +43,7 @@ class newyear(assembly.assembly):
 
                 highp vec4 projectedCenter = projection * modelview * vec4(center, 1.0);
                 highp float scale = abs((projectedCenter.z - 100.0) * 0.2);
-                scale = max(scale, .5);
+                scale = max(scale, .4);
                 gl_Position = projectedCenter + vec4(position, 0.0, 0.0) * scale * 2.0;
                 highp float brightness = 1.0/pow(scale, 2.0);
                 brightness *= 100.0 / projectedCenter.z;
@@ -64,13 +64,13 @@ class newyear(assembly.assembly):
                 f_color = vec4(v_color.rgb * v_color.a * clamp(pow((1.0 - length(v_texcoor)),0.5), 0.0, 1.0), 1.0);
             } """
 
-        def __init__(self, positionTex, colorTex, texcoors):
+        def __init__(self, positionTex, colorTex, texcoors, lifetime):
             self.starcolor = (1,1,1,1)
             self.positionTex = positionTex
             self.colorTex = colorTex
             self.texcoor = texcoors
             self.time = 0
-            self.lifetime = 4
+            self.lifetime = lifetime
 
             super(newyear.Stars, self).__init__()
     
@@ -88,6 +88,38 @@ class newyear(assembly.assembly):
 
         def getUniforms(self):
             return { 'time' : (self.time,), 'lifetime' : (self.lifetime,) }
+
+    class VelocityShader(geometry.simple.texquad):
+        fragment_code = """
+            uniform sampler2D velocityTex;
+            uniform sampler2D positionTex;
+            uniform highp float dt;
+            out highp vec4 f_color;
+            in highp vec2 v_texcoor;
+
+            void main()
+            {
+                highp float drag = 0.00;
+                highp float gravity = 400.0;
+
+                highp vec4 currentSpeed = textureLod(velocityTex, v_texcoor, 0.0);
+                highp vec4 currentPos = vec4(textureLod(positionTex, v_texcoor, 0.0).xyz, 0.0);
+                f_color = currentSpeed * (1.0 - (drag * dt * length(currentSpeed))) - normalize(currentPos) * pow(length(currentPos), -2.0) * dt * gravity;
+            }
+        """
+
+        def __init__(self):
+            self.dt = 0
+            self.velocityTex = None
+            self.positionTex = None
+
+            super().__init__()
+
+        def getUniforms(self):
+            return { 'dt' : (self.dt,) }
+
+        def getTextures(self):
+            return { 'velocityTex' : self.velocityTex, 'positionTex': self.positionTex }
 
     def __init__(self):
         self.last = 0
@@ -107,11 +139,12 @@ class newyear(assembly.assembly):
                 gl.glClearColor(0,0,0,0)
                 gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
-        self.velocitytex = geometry.simple.texquad()
+        self.velocityApplier = geometry.simple.texquad()
+        self.velocityChanger = newyear.VelocityShader()
 
         texcoors = [(x,y) for x in range(0, self.tsize) for y in range(0, self.tsize)]
 
-        self.geometry = newyear.Stars(self.positions.getTexture(), self.colors.getTexture(), texcoors)
+        self.geometry = newyear.Stars(self.positions.getTexture(), self.colors.getTexture(), texcoors, self.lifetime)
 
     def addstar(self, t, dx, dy, dz):
         x, y, z = self.getCenter(t)
@@ -145,12 +178,18 @@ class newyear(assembly.assembly):
         return ( n % self.tsize, int (n / self.tsize) )
 
     def getCenter(self, t):
-        t = t * 4
-        a = math.sin(0.11 * t * 2 * math.pi) * .3 * math.pi + math.sin(0.13 * t * 2 * math.pi) * .5 * math.pi
-        l = math.sin(0.07 * t * 2 * math.pi) * 12
+#        t = t * 4
+#        a = math.sin(0.11 * t * 2 * math.pi) * .3 * math.pi + math.sin(0.13 * t * 2 * math.pi) * .5 * math.pi
+#        l = math.sin(0.07 * t * 2 * math.pi) * 12
 
-        b = math.sin(0.09 * t * 2 * math.pi) * .2 * math.pi + math.sin(0.19 * t * 2 * math.pi) * .5 * math.pi
-        l2 = math.cos(0.03 * t * 2 * math.pi) * 12
+#        b = math.sin(0.09 * t * 2 * math.pi) * .2 * math.pi + math.sin(0.19 * t * 2 * math.pi) * .5 * math.pi
+#        l2 = math.cos(0.03 * t * 2 * math.pi) * 12
+
+        a = 0.4 * t * 2 * math.pi
+        l = 5 * math.sin (t * 2 * math.pi * .3) + 8
+        #l = 10 - t/10
+        b = 0
+        l2 = 0
 
         mx = math.sin(a) * l * 1.5
         my = math.cos(a) * l * 1.5
@@ -161,21 +200,24 @@ class newyear(assembly.assembly):
     def step(self, t):
         dt = t - self.last
 
-        self.velocitytex.setTexture(self.velocities.getTexture())
 
         with self.positions:
-            self.velocitytex.dstblend = gl.GL_ONE
-            self.velocitytex.srcblend = gl.GL_SRC_ALPHA
-            self.velocitytex.color = (1,1,1,dt) # apply delta's with 'dt' weight, as an alpha value
-            self.velocitytex.render()
+            self.velocityApplier.setTexture(self.velocities.getTexture())
+            self.velocityApplier.dstblend = gl.GL_ONE
+            self.velocityApplier.srcblend = gl.GL_SRC_ALPHA
+            self.velocityApplier.color = (1,1,1,dt) # apply delta's with 'dt' weight, as an alpha value
+            self.velocityApplier.render()
 
         # Update velocities to 'slow down'. Since we cannot render to the texture that we're reading
         # from, we have to render to another FBO, and swap it around
         with self.velocitiesDest:
-            self.velocitytex.dstblend = gl.GL_ZERO
-            self.velocitytex.srcblend = gl.GL_ONE
-            self.velocitytex.color = (1,1,1,1 - dt * 0.5)
-            self.velocitytex.render()
+            self.velocityChanger.dt = dt
+            self.velocityChanger.velocityTex = self.velocities.getTexture()
+            self.velocityChanger.positionTex = self.positions.getTexture()
+            self.velocityChanger.dstblend = gl.GL_ZERO
+            self.velocityChanger.srcblend = gl.GL_ONE
+            self.velocityChanger.color = (1,1,1,1 - dt * 0.5)
+            self.velocityChanger.render()
 
         # Swap around velocity FBOs
         self.velocities, self.velocityDest = (self.velocitiesDest, self.velocities)
