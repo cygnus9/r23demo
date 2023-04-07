@@ -128,14 +128,14 @@ args = parser.parse_args()
 glut.glutInit()
 glut.glutInitDisplayMode(glut.GLUT_DOUBLE | glut.GLUT_RGBA)
 glut.glutCreateWindow(b'Amazing ws2811 VGA renderer')
-glut.glutReshapeWindow(1024,1024)
+glut.glutReshapeWindow(960,540)
 
 glut.glutReshapeFunc(reshape)
 glut.glutDisplayFunc(display)
 glut.glutKeyboardFunc(keyboard)
 
 # Primary offscreen framebuffer
-mainfbo = fbo.FBO(1024, 1024)
+mainfbo = fbo.FBO(1920, 1080)
 hbloomfbo = fbo.FBO(512, 512)
 
 # Emulation shader
