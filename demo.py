@@ -32,6 +32,7 @@ import assembly.matrix
 import assembly.particles
 import assembly.tree
 import assembly.rotate
+import assembly.gltf
 
 import geometry.ws2811
 import geometry.hub75e
@@ -66,15 +67,29 @@ def display():
 
     t = reltime()
 
+    with depthfbo:
+        clear()
+
+        modelview = np.eye(4, dtype=np.float32)
+        transforms.scale(modelview, 300, 300, 300)
+        transforms.yrotate(modelview, t*30)
+        transforms.translate(modelview, 0, -10, -100)
+        gltf.setModelView(modelview)
+        gltf.render(t)
 
     with mainfbo:
         clear()
+
+        gltf.render(t)
+
         modelview = np.eye(4, dtype=np.float32)
         transforms.yrotate(modelview, t*30)
-        transforms.translate(modelview, 1, 1, -100)
+        #transforms.translate(modelview, 0, -.03, -.5)
+        transforms.translate(modelview, 0, 0, -100)
         effect.setModelView(modelview)
         effect.render(t)
         effect.step(t)
+
 
     gl.glClearColor(0, 0, 0, 0)
     gl.glClear(gl.GL_COLOR_BUFFER_BIT| gl.GL_DEPTH_BUFFER_BIT)
@@ -87,8 +102,11 @@ def display():
 
     texquad.color = (0.08, 0.08, 0.08, 1.0)
     texquad.render()
-    vbloomquad.color = (0.002, 0.002, 0.002, 1.0)
-    vbloomquad.render()
+#    vbloomquad.color = (0.002, 0.002, 0.002, 1.0)
+#    vbloomquad.render()
+
+#    dquad.render()
+#    dquad.color = (0.1, 0.1, 0.1, 1.0)
 
     glut.glutSwapBuffers()
     glut.glutPostRedisplay()
@@ -107,6 +125,7 @@ def reshape(width,height):
     aspect = np.eye(4, dtype=np.float32)
     transforms.scale(aspect, height/width, 1, 1)
     effect.setAspect(aspect)
+    gltf.setAspect(aspect)
     hbloomquad.blurvector = (0.1 * height/width, 0)
 
 def keyboard( key, x, y ):
@@ -135,10 +154,14 @@ glut.glutDisplayFunc(display)
 glut.glutKeyboardFunc(keyboard)
 
 # Primary offscreen framebuffer
-mainfbo = fbo.FBO(1920, 1080)
+mainfbo = fbo.FBO(960, 540)
+depthfbo = fbo.FBO(960, 540)
 hbloomfbo = fbo.FBO(512, 512)
 
 # Emulation shader
+dquad = geometry.simple.texquad()
+dquad.setTexture(depthfbo.getDepthTexture())
+
 texquad = geometry.simple.texquad()
 texquad.setTexture(mainfbo.getTexture())
 hbloomquad = geometry.simple.blurtexquad(gain = 5, blurvector = (0.1, 0))
@@ -151,13 +174,18 @@ gl.glEnable(gl.GL_FRAMEBUFFER_SRGB)
 # Effect
 import assembly.newyear
 
-effect = assembly.newyear.newyear()
+effect = assembly.newyear.newyear(depthfbo.getDepthTexture())
 import pyrr
 
 aspect = np.eye(4, dtype=np.float32)
-projection = pyrr.matrix44.create_perspective_projection(20, 1.0, 0.1, 1000)
+projection = pyrr.matrix44.create_perspective_projection(20, 1.0, .5, 1000)
+
 effect.setProjection(projection)
 effect.setAspect(aspect)
+
+gltf = assembly.gltf.gltf('test.glb')
+gltf.setProjection(projection)
+gltf.color = (5,5,5,1)
 
 if args.music:
 	start_music()

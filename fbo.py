@@ -22,7 +22,16 @@ class FBO:
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, self.fbo)
         
         glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, self.tex, 0)
-        
+
+        self.depthTex = glGenTextures(1)
+        glBindTexture(GL_TEXTURE_2D, self.depthTex)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, None)
+        glGenerateMipmap(GL_TEXTURE_2D)
+        glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, self.depthTex, 0)
+
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0)
         
     def __enter__(self):
@@ -42,3 +51,6 @@ class FBO:
 
     def getTexture(self):
         return self.tex
+
+    def getDepthTexture(self):
+        return self.depthTex

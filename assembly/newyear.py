@@ -32,10 +32,11 @@ class newyear(assembly.assembly):
             uniform sampler2D positionTex;
             uniform sampler2D colorTex;
             uniform sampler2D velocityTex;
+            uniform sampler2D depthTex;
 
             in highp vec2 position;
             in highp vec2 texcoor;
-            out highp vec4 v_color;
+            out highp vec4 v_color;6
             out highp vec2 v_texcoor;
             void main()
             {
@@ -64,7 +65,17 @@ class newyear(assembly.assembly):
                 brightness *= 100.0 / projectedCenter.z;
                 highp float sparkle = (1.0 + sin((time - postex.w) * 10.0)) / 2.0;
                 highp float fade = clamp(1.0 - ((time - postex.w) / lifetime), 0.0, 1.0);
-                v_color =  objcolor * color * vec4(vec3(brightness * sparkle * fade), 1.0);
+
+                highp float near = 0.5;
+                highp float far = 1000.0;
+                highp float depthSample = texture(depthTex, (0.5 * gl_Position.xy / gl_Position.w) + vec2(0.5)).x;
+                depthSample = 2.0 * depthSample - 1.0;
+                highp float zLinear = 2.0 * near * far / (far + near - depthSample * (far - near));
+                if (zLinear < gl_Position.z) {
+                    v_color = vec4(0.0, 0.0, 0.0, 1.0);
+                } else {
+                    v_color =  objcolor * color * vec4(vec3(brightness * sparkle * fade), 1.0);
+                }
                 v_texcoor = position;
             } 
         """
@@ -80,11 +91,12 @@ class newyear(assembly.assembly):
                 f_color = vec4(v_color.rgb * v_color.a * clamp(pow((1.0 - length(v_texcoor)),0.5), 0.0, 1.0), 1.0);
             } """
 
-        def __init__(self, positionTex, colorTex, velocityTex, texcoors, lifetime, aspect):
+        def __init__(self, positionTex, colorTex, velocityTex, depthTex, texcoors, lifetime, aspect):
             self.starcolor = (1,1,1,1)
             self.positionTex = positionTex
             self.velocityTex = velocityTex
             self.colorTex = colorTex
+            self.depthTex = depthTex
             self.texcoor = texcoors
             self.time = 0
             self.lifetime = lifetime
@@ -99,10 +111,11 @@ class newyear(assembly.assembly):
             return { 'position' : verts, 'color' : colors }
 
         def getTextures(self):
-            return { 
+            return {
                 'colorTex': self.colorTex, 
                 'positionTex': self.positionTex,
                 'velocityTex': self.velocityTex,
+                'depthTex': self.depthTex
             }
 
         def getInstances(self):
@@ -143,12 +156,12 @@ class newyear(assembly.assembly):
         def getTextures(self):
             return { 'velocityTex' : self.velocityTex, 'positionTex': self.positionTex }
 
-    def __init__(self):
+    def __init__(self, depthTex):
         self.last = 0
         self.lastx = self.lasty = self.lastz = 0
         self.aspect = np.eye(4, dtype=np.float32)
 
-        self.tsize = 32
+        self.tsize = 128
         self.lifetime = self.tsize * self.tsize / self.freq
         self.nextPixel = 0
 
@@ -171,6 +184,7 @@ class newyear(assembly.assembly):
             self.positions.getTexture(), 
             self.colors.getTexture(), 
             self.velocities.getTexture(),
+            self.depthTex,
             texcoors, 
             self.lifetime, 
             self.aspect
