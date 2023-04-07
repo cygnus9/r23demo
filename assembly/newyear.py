@@ -24,6 +24,7 @@ class newyear(assembly.assembly):
         vertex_code = """
             uniform mat4 modelview;
             uniform mat4 projection;
+            uniform mat4 aspect;
             uniform vec4 objcolor;
             uniform float time;
             uniform float lifetime;
@@ -41,10 +42,10 @@ class newyear(assembly.assembly):
                 highp vec3 center = postex.xyz;
                 highp vec4 color = vec4(texelFetch(colorTex, ivec2(texcoor), 0).rgb, 1.0);
 
-                highp vec4 projectedCenter = projection * modelview * vec4(center, 1.0);
+                highp vec4 projectedCenter = aspect * projection * modelview * vec4(center, 1.0);
                 highp float scale = abs((projectedCenter.z - 100.0) * 0.2);
                 scale = max(scale, .4);
-                gl_Position = projectedCenter + vec4(position, 0.0, 0.0) * scale * 2.0;
+                gl_Position = projectedCenter + vec4(position, 0.0, 0.0) * scale * 2.0 * aspect;
                 highp float brightness = 1.0/pow(scale, 2.0);
                 brightness *= 100.0 / projectedCenter.z;
                 highp float sparkle = (1.0 + sin((time - postex.w) * 10.0)) / 2.0;
@@ -64,13 +65,14 @@ class newyear(assembly.assembly):
                 f_color = vec4(v_color.rgb * v_color.a * clamp(pow((1.0 - length(v_texcoor)),0.5), 0.0, 1.0), 1.0);
             } """
 
-        def __init__(self, positionTex, colorTex, texcoors, lifetime):
+        def __init__(self, positionTex, colorTex, texcoors, lifetime, aspect):
             self.starcolor = (1,1,1,1)
             self.positionTex = positionTex
             self.colorTex = colorTex
             self.texcoor = texcoors
             self.time = 0
             self.lifetime = lifetime
+            self.aspect = aspect
 
             super(newyear.Stars, self).__init__()
     
@@ -87,7 +89,7 @@ class newyear(assembly.assembly):
             return { 'texcoor' : self.texcoor }
 
         def getUniforms(self):
-            return { 'time' : (self.time,), 'lifetime' : (self.lifetime,) }
+            return { 'time' : (self.time,), 'lifetime' : (self.lifetime,), 'aspect': self.aspect }
 
     class VelocityShader(geometry.simple.texquad):
         fragment_code = """
@@ -99,7 +101,7 @@ class newyear(assembly.assembly):
 
             void main()
             {
-                highp float drag = 0.00;
+                highp float drag = 0.010;
                 highp float gravity = 400.0;
 
                 highp vec4 currentSpeed = textureLod(velocityTex, v_texcoor, 0.0);
@@ -124,6 +126,7 @@ class newyear(assembly.assembly):
     def __init__(self):
         self.last = 0
         self.lastx = self.lasty = self.lastz = 0
+        self.aspect = np.eye(4, dtype=np.float32)
 
         self.tsize = 32
         self.lifetime = self.tsize * self.tsize / self.freq
@@ -144,7 +147,7 @@ class newyear(assembly.assembly):
 
         texcoors = [(x,y) for x in range(0, self.tsize) for y in range(0, self.tsize)]
 
-        self.geometry = newyear.Stars(self.positions.getTexture(), self.colors.getTexture(), texcoors, self.lifetime)
+        self.geometry = newyear.Stars(self.positions.getTexture(), self.colors.getTexture(), texcoors, self.lifetime, self.aspect)
 
     def addstar(self, t, dx, dy, dz):
         x, y, z = self.getCenter(t)
@@ -249,4 +252,7 @@ class newyear(assembly.assembly):
 
     def setModelView(self, M):
         self.geometry.setModelView(M)
+
+    def setAspect(self, M):
+        self.geometry.aspect = M
 

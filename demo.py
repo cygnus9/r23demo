@@ -102,6 +102,11 @@ def reshape(width,height):
     screenHeight = height
     
     gl.glViewport(0, 0, width, height)
+    global effect
+
+    aspect = np.eye(4, dtype=np.float32)
+    transforms.scale(aspect, height/width, 1, 1)
+    effect.setAspect(aspect)
 
 def keyboard( key, x, y ):
     if key == b'\033':
@@ -148,8 +153,10 @@ import assembly.newyear
 effect = assembly.newyear.newyear()
 import pyrr
 
+aspect = np.eye(4, dtype=np.float32)
 projection = pyrr.matrix44.create_perspective_projection(20, 1.0, 0.1, 1000)
 effect.setProjection(projection)
+effect.setAspect(aspect)
 
 if args.music:
 	start_music()

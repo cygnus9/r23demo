@@ -222,7 +222,10 @@ class base(object):
             if len(value) == 3:
                 gl.glUniform3fv(loc, 1, value)
             if len(value) == 4:
-                gl.glUniform4fv(loc, 1, value)
+                if type(value[0]) == float:
+                    gl.glUniform4fv(loc, 1, value)
+                else:
+                    gl.glUniformMatrix4fv(loc, 1, False, value)
 
         texunit = 0
         for tex, value in self.getTextures().items():
