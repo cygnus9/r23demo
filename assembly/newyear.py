@@ -10,6 +10,8 @@ import fbo
 
 from datetime import datetime
 
+from util import file_str
+
 class newyear(assembly.assembly):
     freq = 250
 
@@ -21,39 +23,7 @@ class newyear(assembly.assembly):
         instanceAttributes = { 'texcoor' : 2 }
         attributes = { 'position' : 2 }
 
-        vertex_code = """
-            uniform mat4 modelview;
-            uniform mat4 projection;
-            uniform mat4 aspect;
-            uniform vec4 objcolor;
-            uniform float time;
-            uniform float lifetime;
-
-            uniform sampler2D positionTex;
-            uniform sampler2D colorTex;
-
-            in highp vec2 position;
-            in highp vec2 texcoor;
-            out highp vec4 v_color;
-            out highp vec2 v_texcoor;
-            void main()
-            {
-                highp vec4 postex = texelFetch(positionTex, ivec2(texcoor), 0);
-                highp vec3 center = postex.xyz;
-                highp vec4 color = vec4(texelFetch(colorTex, ivec2(texcoor), 0).rgb, 1.0);
-
-                highp vec4 projectedCenter = aspect * projection * modelview * vec4(center, 1.0);
-                highp float scale = abs((projectedCenter.z - 100.0) * 0.2);
-                scale = max(scale, .4);
-                gl_Position = projectedCenter + vec4(position, 0.0, 0.0) * scale * 2.0 * aspect;
-                highp float brightness = 1.0/pow(scale, 2.0);
-                brightness *= 100.0 / projectedCenter.z;
-                highp float sparkle = (1.0 + sin((time - postex.w) * 10.0)) / 2.0;
-                highp float fade = clamp(1.0 - ((time - postex.w) / lifetime), 0.0, 1.0);
-                v_color =  objcolor * color * vec4(vec3(brightness * sparkle * fade), 1.0);
-                v_texcoor = position;
-            } 
-        """
+        vertex_code = file_str("assembly/newyear.vert")
 
         fragment_code = """
             in highp vec4 v_color;
@@ -65,9 +35,10 @@ class newyear(assembly.assembly):
                 f_color = vec4(v_color.rgb * v_color.a * clamp(pow((1.0 - length(v_texcoor)),0.5), 0.0, 1.0), 1.0);
             } """
 
-        def __init__(self, positionTex, colorTex, texcoors, lifetime, aspect):
+        def __init__(self, positionTex, colorTex, velocityTex, texcoors, lifetime, aspect):
             self.starcolor = (1,1,1,1)
             self.positionTex = positionTex
+            self.velocityTex = velocityTex
             self.colorTex = colorTex
             self.texcoor = texcoors
             self.time = 0
@@ -83,7 +54,11 @@ class newyear(assembly.assembly):
             return { 'position' : verts, 'color' : colors }
 
         def getTextures(self):
-            return { 'colorTex': self.colorTex, 'positionTex': self.positionTex }
+            return { 
+                'colorTex': self.colorTex, 
+                'positionTex': self.positionTex,
+                'velocityTex': self.velocityTex,
+            }
 
         def getInstances(self):
             return { 'texcoor' : self.texcoor }
@@ -147,7 +122,14 @@ class newyear(assembly.assembly):
 
         texcoors = [(x,y) for x in range(0, self.tsize) for y in range(0, self.tsize)]
 
-        self.geometry = newyear.Stars(self.positions.getTexture(), self.colors.getTexture(), texcoors, self.lifetime, self.aspect)
+        self.geometry = newyear.Stars(
+            self.positions.getTexture(), 
+            self.colors.getTexture(), 
+            self.velocities.getTexture(),
+            texcoors, 
+            self.lifetime, 
+            self.aspect
+        )
 
     def addstar(self, t, dx, dy, dz):
         x, y, z = self.getCenter(t)
@@ -245,6 +227,7 @@ class newyear(assembly.assembly):
 
     def render(self, t):
         self.geometry.time = t
+        self.geometry.velocityTex = self.velocities.getTexture()
         self.geometry.render()
 
     def setProjection(self, M):
