@@ -107,6 +107,7 @@ def reshape(width,height):
     aspect = np.eye(4, dtype=np.float32)
     transforms.scale(aspect, height/width, 1, 1)
     effect.setAspect(aspect)
+    hbloomquad.blurvector = (0.1 * height/width, 0)
 
 def keyboard( key, x, y ):
     if key == b'\033':
