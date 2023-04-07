@@ -70,7 +70,7 @@ def display():
     with mainfbo:
         clear()
         modelview = np.eye(4, dtype=np.float32)
-        # transforms.yrotate(modelview, t*30)
+        transforms.yrotate(modelview, t*30)
         transforms.translate(modelview, 1, 1, -100)
         effect.setModelView(modelview)
         effect.render(t)
