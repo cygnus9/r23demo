@@ -36,7 +36,7 @@ class newyear(assembly.assembly):
 
             in highp vec2 position;
             in highp vec2 texcoor;
-            out highp vec4 v_color;6
+            out highp vec4 v_color;
             out highp vec2 v_texcoor;
             void main()
             {
@@ -56,7 +56,7 @@ class newyear(assembly.assembly):
                 highp mat2x2 rotation = mat2x2(cos(angle), -sin(angle), sin(angle), cos(angle));
 
                 highp vec2 transformed_position = 
-                    vec2(position.x * max(1., length(velocity_2d) / 40.), 0) * rotation +
+                    vec2(position.x * max(1., length(velocity_2d) / 140.), 0) * rotation +
                     vec2(0, position.y) * rotation;
 
                 gl_Position = projectedCenter + vec4(transformed_position, 0.0, 0.0) * scale * 2.0 * aspect;
@@ -157,6 +157,7 @@ class newyear(assembly.assembly):
             return { 'velocityTex' : self.velocityTex, 'positionTex': self.positionTex }
 
     def __init__(self, depthTex):
+        self.depthTex = depthTex
         self.last = 0
         self.lastx = self.lasty = self.lastz = 0
         self.aspect = np.eye(4, dtype=np.float32)
