@@ -10,6 +10,8 @@ class base(object):
     """Base class for 2d geometries with modelview and projection transforms"""    
     
     version = """#version 300 es\n"""
+
+    defines = """"""
     
     vertex_code = """
         uniform mat4 modelview;
@@ -89,8 +91,8 @@ class base(object):
         fragment = gl.glCreateShader(gl.GL_FRAGMENT_SHADER)
 
         # Set shaders source
-        gl.glShaderSource(vertex, self.version + self.vertex_code)
-        gl.glShaderSource(fragment, self.version + self.fragment_code)
+        gl.glShaderSource(vertex, self.version + self.defines + self.vertex_code)
+        gl.glShaderSource(fragment, self.version + self.defines + self.fragment_code)
 
         # Compile shaders
         gl.glCompileShader(vertex)

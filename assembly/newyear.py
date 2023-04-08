@@ -56,7 +56,7 @@ class newyear(assembly.assembly):
                 highp float mbscale = max(1.0, length(projectedVelocity.xy) / 100.0);
 
                 highp vec2 transformed_position = (position.x * velocity_2d_ortho) + (position.y * velocity_2d * mbscale);
-                gl_Position = (vec4(transformed_position, 0.0, 1.0) * scale + projectedCenter) * aspect;
+                gl_Position = (vec4(position, 0.0, 1.0) * scale + projectedCenter) * aspect;
             
                 highp float brightness = 1.0/pow(scale, 2.0);
                 brightness *= 100.0 / projectedCenter.z;

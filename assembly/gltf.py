@@ -48,17 +48,21 @@ class Mesh(geometry.base):
 
         void main()
         {
-            highp vec4 texel = texture(texture0, v_texcoors0);
-            f_color = texel * v_color;
+            f_color = v_color;
+        #ifdef TEXTURE0
+            f_color *= texture(texture0, v_texcoors0);
+        #endif
         }
     """
 
-    def __init__(self, vertices, indices, images):
+    def __init__(self, mode, vertices, indices, images):
+        self.primitive = mode
         self.vertices = vertices
         self.indices = indices
         self.textures = []
 
-        for image in images:
+        for i, image in enumerate(images):
+            self.defines += "#define TEXTURE%d" % i
             self.textures.append((self.loadImage(image[0]), image[1]))
         self.aspect = np.eye(4, dtype=np.float32)
 
@@ -66,7 +70,6 @@ class Mesh(geometry.base):
 
     def loadImage(self, im):
         imdata = im.tobytes()
-        print(len(imdata))
         tex = gl.glGenTextures(1)
         gl.glBindTexture(gl.GL_TEXTURE_2D, tex)
         gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
@@ -106,6 +109,8 @@ class gltf(assembly.assembly):
         mesh = gltf.meshes[gltf.scenes[gltf.scene].nodes[0]]
         primitive = mesh.primitives[0]
 
+        print(primitive)
+
         vertices = self.readFromAccessor(gltf, primitive.attributes.POSITION)
         indices = self.readFromAccessor(gltf, primitive.indices)
         images = []
@@ -121,7 +126,7 @@ class gltf(assembly.assembly):
             im.tobytes()
             images.append((im, texcoors))
 
-        self.geometry = Mesh(vertices, indices, images)
+        self.geometry = Mesh(primitive.mode, vertices, indices, images)
 
     def getFormat(self, componentType, type):
         formats = { 5123: "H", 5126: "f" }
