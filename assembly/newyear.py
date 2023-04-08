@@ -57,8 +57,8 @@ class newyear(assembly.assembly):
                 highp vec4 projectedObjectVelocity = aspect * projection * modelview * vec4(velocity.xyz, 1.0);
                 highp vec4 projectedVelocity = projectedObjectVelocity + projectedRotationVelocity * rmbscale;
                 highp vec2 velocity_2d = projectedVelocity.xy / length(projectedVelocity.xy);
-                highp vec2 velocity_2d_ortho = vec2(-velocity_2d.y, velocity_2d.x) / length(velocity_2d);
-                highp float mbscale = max(1.0, length(projectedVelocity.xy) / 100.0);
+                highp vec2 velocity_2d_ortho = vec2(-velocity_2d.y, velocity_2d.x);
+                highp float mbscale = clamp(length(projectedVelocity.xy) / 100.0, 1.0, 10.0);
 
                 highp vec2 transformed_position = (position.x * velocity_2d_ortho) + (position.y * velocity_2d * mbscale);
                 gl_Position = (vec4(transformed_position, 0.0, 1.0) * scale + projectedCenter) * aspect;
