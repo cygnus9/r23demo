@@ -19,10 +19,10 @@ import argparse
 import pygame
 
 def start_music():
-	pygame.init()
-	pygame.mixer.init()
-	pygame.mixer.music.load('loreen.mp3')
-	pygame.mixer.music.play()
+    pygame.init()
+    pygame.mixer.init()
+    pygame.mixer.music.load('loreen.mp3')
+    pygame.mixer.music.play()
 
 import assembly.copperbar
 import assembly.circles
@@ -64,11 +64,8 @@ def clear():
     gl.glEnable(gl.GL_BLEND)
     gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
 
-def display():
-    global args, mainfbo, texquad, signalgenerator
 
-    t = reltime()
-
+def do_gltf_depth_buffer(t):
     with depthfbo:
         clear()
 
@@ -79,16 +76,24 @@ def display():
         gltf.setModelView(modelview)
         gltf.render(t)
 
+
+def display():
+    global args, mainfbo, texquad, signalgenerator
+
+    t = reltime()
+
+    # TODO: move to assembly for "newyear" space effect
+    if False:
+        do_gltf_depth_buffer(t)
+
     with mainfbo:
         clear()
 
-        gltf.render(t)
+        # TODO: move to assembly for "newyear" space effect
+        if False:
+            gltf.render(t)
 
-        modelview = np.eye(4, dtype=np.float32)
-        transforms.yrotate(modelview, t * rotationSpeed)
-        #transforms.translate(modelview, 0, -.03, -.5)
-        transforms.translate(modelview, 0, 0, -100)
-        effect.setModelView(modelview)
+        effect.changeModelview(t)
         effect.render(t)
         effect.step(t)
 
@@ -133,7 +138,6 @@ def reshape(width,height):
 def keyboard( key, x, y ):
     if key == b'\033':
         glut.glutLeaveMainLoop()
-		
     if key == b' ':
         print('%d', pygame.mixer.music.get_pos())
 
@@ -156,9 +160,11 @@ glut.glutDisplayFunc(display)
 glut.glutKeyboardFunc(keyboard)
 
 # Primary offscreen framebuffer
-mainfbo = fbo.FBO(960, 540)
-depthfbo = fbo.FBO(960, 540)
+X, Y = 960, 540
+mainfbo = fbo.FBO(X, Y)
+depthfbo = fbo.FBO(X, Y)
 hbloomfbo = fbo.FBO(512, 512)
+
 
 # Emulation shader
 dquad = geometry.simple.texquad()
@@ -175,8 +181,11 @@ gl.glEnable(gl.GL_FRAMEBUFFER_SRGB)
 
 # Effect
 import assembly.newyear
-
 effect = assembly.newyear.newyear(depthfbo.getDepthTexture(), rotationSpeed)
+
+import assembly.video
+effect = assembly.video.video("flaming-marshmellows.mp4")
+
 import pyrr
 
 aspect = np.eye(4, dtype=np.float32)
@@ -190,7 +199,7 @@ gltf.setProjection(projection)
 gltf.color = (5,5,5,1)
 
 if args.music:
-	start_music()
+    start_music()
 
 if args.fullscreen:
     glut.glutFullScreen()

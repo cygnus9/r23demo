@@ -1,7 +1,9 @@
 ﻿import geometry
 import geometry.simple
+import numpy as np
 import OpenGL.GL as gl
 import time
+import transforms
 from ffpyplayer.player import MediaPlayer
 
 class video(geometry.simple.texquad):
@@ -20,8 +22,8 @@ class video(geometry.simple.texquad):
             f_color = texelFetch(tex, coor, 0);
         } """
         
-    def __init__(self):
-        self.filename = 'frozen.mp4'
+    def __init__(self, filename):
+        self.filename = filename
         self.player = MediaPlayer(self.filename, loop=0)
 
         while True:
@@ -38,6 +40,9 @@ class video(geometry.simple.texquad):
         self.n = 0
         
         super(video, self).__init__()
+
+    def setAspect(self, M):
+        self.aspect = M
 
     def getVertices(self):
         aspect = float(self.h)/float(self.w)
@@ -72,3 +77,12 @@ class video(geometry.simple.texquad):
             time.sleep(val)
 
         super(video, self).render()
+
+    def step(self, t):
+        pass
+
+    def changeModelview(self, t):
+        modelview = np.eye(4, dtype=np.float32)
+        transforms.yrotate(modelview, 180)
+        transforms.translate(modelview, 0, 0, -8.0)
+        self.setModelView(modelview)

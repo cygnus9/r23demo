@@ -171,6 +171,7 @@ class newyear(assembly.assembly):
 
     def __init__(self, depthTex, rotationSpeed):
         self.depthTex = depthTex
+        self.rotationSpeed = rotationSpeed
         self.last = 0
         self.lastx = self.lasty = self.lastz = 0
         self.aspect = np.eye(4, dtype=np.float32)
@@ -313,3 +314,9 @@ class newyear(assembly.assembly):
     def setAspect(self, M):
         self.geometry.aspect = M
 
+    def changeModelview(self, t):
+        modelview = np.eye(4, dtype=np.float32)
+        transforms.yrotate(modelview, t * self.rotationSpeed)
+        #transforms.translate(modelview, 0, -.03, -.5)
+        transforms.translate(modelview, 0, 0, -100)
+        effect.setModelView(modelview)
