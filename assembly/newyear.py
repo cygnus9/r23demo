@@ -46,20 +46,17 @@ class newyear(assembly.assembly):
                 highp vec4 velocity = texelFetch(velocityTex, ivec2(texcoor), 0);
 
                 highp vec4 projectedCenter = aspect * projection * modelview * vec4(center, 1.0);
-                highp float scale = abs((projectedCenter.z - 100.0) * 0.2);
-                scale = max(scale, .4);
+                highp float scale = abs((projectedCenter.z - 100.0) * 0.4);
+                scale = max(scale, 1.0);
 
-                highp vec4 projectedVelocity = aspect * projection * modelview * vec4(velocity);
-                highp vec2 velocity_2d = projectedVelocity.xy;
+                highp vec4 projectedVelocity = aspect * projection * modelview * vec4(velocity.xyz, 1.0);
+                //projectedVelocity = vec4(1.0, 1.0, 0.0, 1.0);
+                highp vec2 velocity_2d = projectedVelocity.xy / length(projectedVelocity.xy);
+                highp vec2 velocity_2d_ortho = vec2(-velocity_2d.y, velocity_2d.x) / length(velocity_2d);
+                highp float mbscale = max(1.0, length(projectedVelocity.xy) / 100.0);
 
-                highp float angle = atan(velocity_2d.y, velocity_2d.x);
-                highp mat2x2 rotation = mat2x2(cos(angle), -sin(angle), sin(angle), cos(angle));
-
-                highp vec2 transformed_position = 
-                    vec2(position.x * max(1., length(velocity_2d) / 140.), 0) * rotation +
-                    vec2(0, position.y) * rotation;
-
-                gl_Position = projectedCenter + vec4(transformed_position, 0.0, 0.0) * scale * 2.0 * aspect;
+                highp vec2 transformed_position = (position.x * velocity_2d_ortho) + (position.y * velocity_2d * mbscale);
+                gl_Position = (vec4(transformed_position, 0.0, 1.0) * scale + projectedCenter) * aspect;
             
                 highp float brightness = 1.0/pow(scale, 2.0);
                 brightness *= 100.0 / projectedCenter.z;

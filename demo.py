@@ -102,8 +102,8 @@ def display():
 
     texquad.color = (0.08, 0.08, 0.08, 1.0)
     texquad.render()
-#    vbloomquad.color = (0.002, 0.002, 0.002, 1.0)
-#    vbloomquad.render()
+    vbloomquad.color = (0.002, 0.002, 0.002, 1.0)
+    vbloomquad.render()
 
 #    dquad.render()
 #    dquad.color = (0.1, 0.1, 0.1, 1.0)
@@ -168,7 +168,7 @@ hbloomquad = geometry.simple.blurtexquad(gain = 5, blurvector = (0.1, 0))
 hbloomquad.setTexture(mainfbo.getTexture())
 vbloomquad = geometry.simple.blurtexquad(gain = 5, blurvector = (0, 0.1))
 vbloomquad.setTexture(hbloomfbo.getTexture())
-
+\
 gl.glEnable(gl.GL_FRAMEBUFFER_SRGB)
 
 # Effect
