@@ -44,6 +44,8 @@ ps = []
 screenWidth = 0
 screenHeight = 0
 
+rotationSpeed = 30  # °/s
+
 def reltime():
     global start, lastTime, args
 
@@ -72,7 +74,7 @@ def display():
 
         modelview = np.eye(4, dtype=np.float32)
         transforms.scale(modelview, 300, 300, 300)
-        transforms.yrotate(modelview, t*30)
+        transforms.yrotate(modelview, t * rotationSpeed)
         transforms.translate(modelview, 0, -10, -100)
         gltf.setModelView(modelview)
         gltf.render(t)
@@ -83,7 +85,7 @@ def display():
         gltf.render(t)
 
         modelview = np.eye(4, dtype=np.float32)
-        transforms.yrotate(modelview, t*30)
+        transforms.yrotate(modelview, t * rotationSpeed)
         #transforms.translate(modelview, 0, -.03, -.5)
         transforms.translate(modelview, 0, 0, -100)
         effect.setModelView(modelview)
@@ -174,7 +176,7 @@ gl.glEnable(gl.GL_FRAMEBUFFER_SRGB)
 # Effect
 import assembly.newyear
 
-effect = assembly.newyear.newyear(depthfbo.getDepthTexture())
+effect = assembly.newyear.newyear(depthfbo.getDepthTexture(), rotationSpeed)
 import pyrr
 
 aspect = np.eye(4, dtype=np.float32)
