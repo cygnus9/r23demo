@@ -15,6 +15,7 @@ import time
 import fbo
 import random
 import argparse
+import numpy
 
 import pygame
 
@@ -54,9 +55,10 @@ def reltime():
     else:
         t = time.time() - start
 
+    dt = lastTime - t
     lastTime = t
 
-    return t
+    return t, dt
  
 def clear():   
     gl.glClearColor(0, 0, 0, 0)    
@@ -64,15 +66,15 @@ def clear():
     gl.glEnable(gl.GL_BLEND)
     gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE)
 
-
 def do_gltf_depth_buffer(t):
     with depthfbo:
         clear()
 
         modelview = np.eye(4, dtype=np.float32)
-        transforms.scale(modelview, 30, 30, 30)
-        transforms.yrotate(modelview, t * 30)
-        transforms.translate(modelview, 0, 0, -10)
+        #transforms.scale(modelview, 5, 5, 5)
+        #transforms.xrotate(modelview, 90)
+        #transforms.translate(modelview, -25, 32, 0)
+        #transforms.scale(modelview, 3, -3, 3)
         gltf.setModelView(modelview)
         gltf.render(t)
 
@@ -80,10 +82,10 @@ def do_gltf_depth_buffer(t):
 def display():
     global args, mainfbo, texquad, signalgenerator
 
-    t = reltime()
+    t, dt = reltime()
 
     # TODO: move to assembly for "newyear" space effect
-    if False:
+    if True:
         do_gltf_depth_buffer(t)
 
     with mainfbo:
@@ -93,7 +95,15 @@ def display():
         if False:
             gltf.render(t)
 
-        effect.changeModelview(t)
+        modelview = np.eye(4, dtype=np.float32)
+        transforms.translate(modelview, -20, 0, 0)
+        transforms.yrotate(modelview, 90)
+        #transforms.translate(modelview, 0, -.03, -.5)
+
+        cam = gltf.getNodeModels('Camera')
+        modelview = numpy.linalg.inv(cam[0]['model'])
+
+        effect.setModelView(modelview)
         effect.render(t)
         effect.step(t)
 
@@ -117,6 +127,18 @@ def display():
 
     glut.glutSwapBuffers()
     glut.glutPostRedisplay()
+
+    for node in gltf.getNodePositions('Cube'):
+        x,y,z = node['pos']
+        r,g,b,a = node['color']
+
+        d = 0.01
+        dx = random.uniform(-d, d)
+        dy = random.uniform(-d, d)
+        dz = random.uniform(-d, d)
+
+        effect.addstar(t, x, y, z, dx, dy, dz, r*2, g*2, b*2)
+
     
 def reshape(width,height):
     global screenWidth, screenHeight
@@ -181,22 +203,21 @@ gl.glEnable(gl.GL_FRAMEBUFFER_SRGB)
 
 # Effect
 import assembly.newyear
-effect = assembly.newyear.newyear(depthfbo.getDepthTexture(), rotationSpeed)
-
 import assembly.video
-effect = assembly.video.video("flaming-marshmellows.mp4")
+#effect = assembly.video.video("flaming-marshmellows.mp4")
 
 import pyrr
 
 aspect = np.eye(4, dtype=np.float32)
-projection = pyrr.matrix44.create_perspective_projection(20, 1.0, .5, 1000)
+projection = pyrr.matrix44.create_perspective_projection(25, 1.0, 1, 1000)
 
-effect.setProjection(projection)
-effect.setAspect(aspect)
-
-gltf = assembly.gltf.gltf('test.glb')
+gltf = assembly.gltf.gltf('text.gltf')
 gltf.setProjection(projection)
 gltf.color = (5,5,5,1)
+
+effect = assembly.newyear.newyear(depthfbo.getDepthTexture(), rotationSpeed)
+effect.setProjection(projection)
+effect.setAspect(aspect)
 
 if args.music:
     start_music()

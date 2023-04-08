@@ -14,6 +14,33 @@ from PIL import Image
 
 from pygltflib import GLTF2, Scene
 
+def slerp(t, qa, qb):
+    qm = (0,0,0,1)
+
+    # Calculate angle between them.
+    cosHalfTheta = qa[0] * qb[0] + qa[1] * qb[1] + qa[2] * qb[2] + qa[3] * qb[3]
+
+    if (abs(cosHalfTheta) >= 1.0):
+        return qa
+
+    # Calculate temporary values.
+    halfTheta = math.acos(cosHalfTheta)
+    sinHalfTheta = math.sqrt(1.0 - cosHalfTheta*cosHalfTheta)
+
+    # if theta = 180 degrees then result is not fully defined
+    # we could rotate around any axis normal to qa or qb
+    if (abs(sinHalfTheta) < 0.001):
+        return (qa[0] * 0.5 + qb[0] * 0.5, qa[1] * 0.5 + qb[1] * 0.5, qa[2] * 0.5 + qb[2] * 0.5, qa[3] * 0.5 + qb[3] * 0.5)
+
+    ratioA = math.sin((1 - t) * halfTheta) / sinHalfTheta
+    ratioB = math.sin(t * halfTheta) / sinHalfTheta
+
+    # calculate Quaternion.
+    return (qa[0] * ratioA + qb[0] * ratioB,
+            qa[1] * ratioA + qb[1] * ratioB,
+            qa[2] * ratioA + qb[2] * ratioB,
+            qa[3] * ratioA + qb[3] * ratioB)
+
 def interp(t, v0, v1):
     w0 = 1-t
     w1 = t
@@ -34,10 +61,7 @@ def interp(t, v0, v1):
                 interp(t, v0[2], v1[2]))
 
     if len(v0) == 4:
-        return (interp(t, v0[0], v1[0]),
-                interp(t, v0[1], v1[1]),
-                interp(t, v0[2], v1[2]),
-                interp(t, v0[3], v1[3]))
+        return slerp(t, v0, v1)
 
 class Mesh(geometry.base):
     primitive = gl.GL_TRIANGLES
@@ -134,15 +158,19 @@ class gltf(assembly.assembly):
         self.gltf = gltf = GLTF2().load(filename)
         self.nodeid = gltf.scenes[gltf.scene].nodes[0]
         self.node = gltf.nodes[self.nodeid]
-        mesh = gltf.meshes[self.nodeid]
+        self.node = gltf.nodes[2]
+        self.modelview = np.eye(4, dtype=np.float32)
+        print(self.node)
+        mesh = gltf.meshes[self.node.mesh]
         primitive = mesh.primitives[0]
 
         vertices = self.readFromAccessor(gltf, primitive.attributes.POSITION)
         indices = self.readFromAccessor(gltf, primitive.indices)
 
+        self.animations = []
         for animation in gltf.animations:
             # Meh, only one for now
-            self.animSamplers = []
+            animSamplers = []
             for sampler in animation.samplers:
                 input = self.readFromAccessor(gltf, sampler.input)
                 output = self.readFromAccessor(gltf, sampler.output)
@@ -154,10 +182,11 @@ class gltf(assembly.assembly):
                 for inp,out in zip(input, output):
                     animSampler.append((inp, out))
 
-                print(animSampler)
-                self.animSamplers.append(animSampler)
+                animSamplers.append(animSampler)
 
-        camera_node = self.getNodeByName(gltf.nodes, 'Camera')
+            self.animations.append(animSamplers)
+
+        camera_node = self.getNodeByName('Camera')
         self.view = np.eye(4, dtype=np.float32)
 #        transforms.rotate(self.view, -100, 0, 1, 0)
 #        if camera_node.rotation:
@@ -183,8 +212,8 @@ class gltf(assembly.assembly):
 
         self.geometry = Mesh(primitive.mode, vertices, indices, images)
 
-    def getNodeByName(self, nodes, name):
-        found = [node for node in nodes if node.name == name]
+    def getNodeByName(self, name):
+        found = [node for node in self.gltf.nodes if node.name == name]
         if found:
             return found[0]
 
@@ -210,7 +239,6 @@ class gltf(assembly.assembly):
 
         # get the binary data for this mesh primitive from the buffer
         accessor = gltf.accessors[accessorId]
-        print(accessor)
 
         format = self.getFormat(accessor.componentType, accessor.type)
         size = struct.calcsize(format)
@@ -229,47 +257,95 @@ class gltf(assembly.assembly):
         return out
 
     def apply_animations(self, t):
-        for anim in self.gltf.animations:
+        for animId, anim in enumerate(self.gltf.animations):
             for channel in anim.channels:
                 nodeid = channel.target.node
                 targetNode = self.gltf.nodes[nodeid]
 
-                val = self.interpolateAnim(channel.sampler, t)
+                val = self.interpolateAnim(animId, channel.sampler, t)
                 setattr(targetNode, channel.target.path, val)
 
-    def interpolateAnim(self, sampler, t):
-        animSampler = self.animSamplers[sampler]
+    def interpolateAnim(self, animId, sampler, t):
+        animSampler = self.animations[animId][sampler]
+
         t = t % animSampler[-1][0][0]
+
+        nextKeyFrame = prevKeyFrame = None
         for i in range(0, len(animSampler)):
             keyFrame = animSampler[i]
 
             if keyFrame[0][0] > t:
+                nextKeyFrame = keyFrame
                 prevKeyFrame = animSampler[i-1]
+                break
 
-                t0 = prevKeyFrame[0][0]
-                t1 = keyFrame[0][0]
-                v0 = prevKeyFrame[1]
-                v1 = keyFrame[1]
+        if nextKeyFrame:
+            t0 = prevKeyFrame[0][0]
+            t1 = keyFrame[0][0]
+            v0 = prevKeyFrame[1]
+            v1 = keyFrame[1]
 
-                dt = (t - t0) / (t1-t0)
+            dt = (t - t0) / (t1-t0)
 
-                ret = interp(dt, v0, v1)
-                #print("%r : %r/%r -> %r" % (dt, v0, v1, ret))
-                return ret
+            ret = interp(dt, v0, v1)
+            return ret
 
-        return self.animSamplers[sampler][0][1]
+        return self.animation[animId][sampler][0][1]
+
+    def getModel(self, node):
+        model = np.eye(4, dtype=np.float32)
+        if node.scale:
+            transforms.scale(model, *node.scale)
+        if node.rotation:
+            transforms.rotateQ(model, *node.rotation)
+        if node.translation:
+            transforms.translate(model, *node.translation)
+
+        return model
+
+    def getRecursiveNodeModels(self, nodeId, prefix):
+        node = self.gltf.nodes[nodeId]
+
+        if node.name.startswith(prefix):
+            return [ { 'model' : self.getModel(node), 'node' : node } ]
+
+        children = []
+        for child in node.children:
+            children.extend(self.getRecursiveNodeModels(child, prefix))
+
+        return [ { 'model' : np.dot(child['model'], self.getModel(node)), 'node' : child['node'] } for child in children]
+
+    def getNodeModels(self, prefix):
+        models = []
+        for node in self.gltf.scenes[0].nodes:
+            models.extend(self.getRecursiveNodeModels(node, prefix))
+
+        return models
+
+    def getNodePositions(self, prefix):
+        models = self.getNodeModels(prefix)
+
+        points = []
+        for model in models:
+            pos = (0,0,0,1)
+            modelview = np.dot(model['model'], self.modelview)
+
+            v = np.dot(pos, modelview)
+            points.append({
+                'pos' : (v[0]/v[3], v[1]/v[3], v[2]/v[3]),
+                'color': self.gltf.materials[self.gltf.meshes[model['node'].mesh].primitives[0].material].pbrMetallicRoughness.baseColorFactor,
+                'node' : model['node'] })
+
+        return points
+
+    def getNodes(self):
+        return self.gltf.nodes
 
     def render(self, t):
         self.apply_animations(t)
 
         view = np.eye(4, dtype=np.float32)
-        model = np.eye(4, dtype=np.float32)
-        if self.node.rotation:
-            transforms.rotateQ(model, *self.node.rotation)
-        if self.node.translation:
-            transforms.translate(model, *self.node.translation)
-        if self.node.scale:
-            transforms.translate(model, *self.node.scale)
+        model = self.getModel(self.getNodeByName('Cube'))
 
         self.geometry.time = t
         self.geometry.modelview = np.dot(model, self.modelview)

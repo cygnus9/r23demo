@@ -46,13 +46,14 @@ class newyear(assembly.assembly):
                 highp vec4 color = vec4(texelFetch(colorTex, ivec2(texcoor), 0).rgb, 1.0);
                 highp vec4 velocity = texelFetch(velocityTex, ivec2(texcoor), 0);
 
-                highp vec4 projectedCenter = aspect * projection * modelview * vec4(center, 1.0);
-                highp vec4 prevProjectedCenter = aspect * projection * modelview * rotation * vec4(center, 1.0);
+                highp vec4 projectedCenter = projection * aspect * modelview * vec4(center, 1.0);
+                highp vec4 prevProjectedCenter = projection * aspect * modelview * rotation * vec4(center, 1.0);
                 highp vec4 projectedRotationVelocity = projectedCenter - prevProjectedCenter;
                 highp float rmbscale = 100.0;  // Increase to make it more pronounced.
 
-                highp float scale = abs((projectedCenter.z - 100.0) * 0.4);
-                scale = max(scale, 0.5);
+                highp float scale = abs((projectedCenter.z - 5.5) * 1.0);
+                scale = max(scale, 0.04);
+                scale = min(scale, 8.0);
 
                 highp vec4 projectedObjectVelocity = aspect * projection * modelview * vec4(velocity.xyz, 1.0);
                 highp vec4 projectedVelocity = projectedObjectVelocity + projectedRotationVelocity * rmbscale;
@@ -61,13 +62,13 @@ class newyear(assembly.assembly):
                 highp float mbscale = clamp(length(projectedVelocity.xy) / 100.0, 1.0, 10.0);
 
                 highp vec2 transformed_position = (position.x * velocity_2d_ortho) + (position.y * velocity_2d * mbscale);
-                gl_Position = (vec4(transformed_position, 0.0, 1.0) * scale + projectedCenter);
+                gl_Position = (vec4(transformed_position, 0.0, 1.0) * scale * aspect + projectedCenter);
                 highp float brightness = 1.0/pow(scale, 2.0);
-                brightness *= 100.0 / projectedCenter.z;
+                brightness *= 0.1 / projectedCenter.z;
                 highp float sparkle = (1.0 + sin((time - postex.w) * 10.0)) / 2.0;
                 highp float fade = clamp(1.0 - ((time - postex.w) / lifetime), 0.0, 1.0);
 
-                highp float near = 0.5;
+                highp float near = 1.0;
                 highp float far = 1000.0;
                 highp float depthSample = texture(depthTex, (0.5 * gl_Position.xy / gl_Position.w) + vec2(0.5)).x;
                 depthSample = 2.0 * depthSample - 1.0;
@@ -147,11 +148,11 @@ class newyear(assembly.assembly):
 
             void main()
             {
-                highp float drag = 0.002;
-                highp float gravity = 200.0;
+                highp float drag = 0.001;
+                highp float gravity = 0.0;
 
-                highp vec4 currentSpeed = textureLod(velocityTex, v_texcoor, 0.0);
-                highp vec4 currentPos = vec4(textureLod(positionTex, v_texcoor, 0.0).xyz, 0.0);
+                highp vec4 currentSpeed = vec4(textureLod(velocityTex, v_texcoor, 0.0).xyz, 1.0);
+                highp vec4 currentPos = vec4(textureLod(positionTex, v_texcoor, 0.0).xyz, 1.0);
                 f_color = currentSpeed * (1.0 - (drag * dt * length(currentSpeed))) - normalize(currentPos) * pow(length(currentPos), -2.0) * dt * gravity;
             }
         """
@@ -206,20 +207,15 @@ class newyear(assembly.assembly):
             rotationSpeed,
         )
 
-    def addstar(self, t, dx, dy, dz):
-        x, y, z = self.getCenter(t)
-
-        w = 5
-        a = random.uniform(0, math.pi * 2)
-        dx += w*math.cos(a)
-        dy += w*math.sin(a)
-        dz += w*math.sin(a+math.pi)
+    def addstar(self, t, x, y, z, dx, dy, dz, r, g, b):
         shift = random.uniform(0, 1)
 
-        color = random.choice([(8.0,6.4,1.6), (6.8,6.2,7.8)])
+#        color = random.choice([(8.0,6.4,1.6), (6.8,6.2,7.8)])
 #        color = random.choice([(8.0,0.4,0.6), (6.8,4.2,4.8), (0.8,9.2,0.8)])
+        color = [r, g, b]
 
         gl.glBlendFunc(gl.GL_ONE, gl.GL_ZERO)
+        gl.glUseProgram(0)
         with self.positions:
             gl.glWindowPos2i(*self.rasterPos(self.nextPixel))
             gl.glDrawPixels(1, 1, gl.GL_RGBA, gl.GL_FLOAT, (x,y,z, t + shift)) # Store xyz + starttime
@@ -230,36 +226,15 @@ class newyear(assembly.assembly):
 
         with self.velocities:
             gl.glWindowPos2i(*self.rasterPos(self.nextPixel))
-            gl.glDrawPixels(1, 1, gl.GL_RGB, gl.GL_FLOAT, (dx/5,dy/5,dz/5))
+            gl.glDrawPixels(1, 1, gl.GL_RGBA, gl.GL_FLOAT, (dx,dy,dz,1))
 
         self.nextPixel = (self.nextPixel + 1) % (self.tsize*self.tsize)
 
     def rasterPos(self, n):
         return ( n % self.tsize, int (n / self.tsize) )
 
-    def getCenter(self, t):
-#        t = t * 4
-#        a = math.sin(0.11 * t * 2 * math.pi) * .3 * math.pi + math.sin(0.13 * t * 2 * math.pi) * .5 * math.pi
-#        l = math.sin(0.07 * t * 2 * math.pi) * 12
-
-#        b = math.sin(0.09 * t * 2 * math.pi) * .2 * math.pi + math.sin(0.19 * t * 2 * math.pi) * .5 * math.pi
-#        l2 = math.cos(0.03 * t * 2 * math.pi) * 12
-
-        a = 0.4 * t * 2 * math.pi
-        l = 5 * math.sin (t * 2 * math.pi * .3) + 8
-        #l = 10 - t/10
-        b = 0
-        l2 = 0
-
-        mx = math.sin(a) * l * 1.5
-        my = math.cos(a) * l * 1.5
-        mz = math.cos(b) * l2 * 1.5
-
-        return mx, my, mz
-
     def step(self, t):
         dt = t - self.last
-
 
         with self.positions:
             self.velocityApplier.setTexture(self.velocities.getTexture())
@@ -281,23 +256,6 @@ class newyear(assembly.assembly):
 
         # Swap around velocity FBOs
         self.velocities, self.velocityDest = (self.velocitiesDest, self.velocities)
-
-        x,y,z = self.getCenter(t)
-
-        n = math.ceil(t*self.freq) - math.ceil(self.last*self.freq)
-
-        if n > 0 and dt > 0:
-            for i in range(0, n):
-                dx = (x - self.lastx)/dt
-                dy = (y - self.lasty)/dt
-                dz = (z - self.lastz)/dt
-
-                self.addstar(t, dx, dy, dz)
-
-        self.lastx = x
-        self.lasty = y
-        self.lastz = z
-
         self.last = t
 
     def render(self, t):
