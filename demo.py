@@ -183,7 +183,7 @@ projection = pyrr.matrix44.create_perspective_projection(20, 1.0, .5, 1000)
 effect.setProjection(projection)
 effect.setAspect(aspect)
 
-gltf = assembly.gltf.gltf('test.glb')
+gltf = assembly.gltf.gltf('anim.glb')
 gltf.setProjection(projection)
 gltf.color = (5,5,5,1)
 
