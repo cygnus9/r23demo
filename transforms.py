@@ -110,6 +110,22 @@ def rotate(M, angle, x, y, z, point=None):
                      [          0,          0,        0,   1]]).T
     M[...] = np.dot(M,R)
 
+def rotateQ(M, qx, qy, qz, qw):
+    R1 = np.array([
+                [qw,  qz, -qy,  qx],
+                [-qz, qw,  qx,  qy],
+                [qy, -qx,  qw,  qz],
+                [-qx,-qy, -qz,  qw]])
+
+    R2 = np.array([
+                [qw,  qz, -qy, -qx],
+                [-qz,  qw, qx, -qy],
+                [qy,  -qx, qw, -qz],
+                [qx,  qy,  qz,  qw]])
+
+    R = np.dot(R1, R2)
+
+    M[...] = np.dot(M, R)
 
 def ortho( left, right, bottom, top, znear, zfar ):
     assert( right  != left )

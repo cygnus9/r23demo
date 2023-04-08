@@ -8,10 +8,36 @@ import transforms
 import math
 import fbo
 import struct
+import numpy
 from io import BytesIO
 from PIL import Image
 
 from pygltflib import GLTF2, Scene
+
+def interp(t, v0, v1):
+    w0 = 1-t
+    w1 = t
+
+    if (type(v0) == float):
+        return w0 * v0 + w1 * v1
+
+    if len(v0) == 1:
+        return (interp(t, v0[0], v1[0]),)
+
+    if len(v0) == 2:
+        return (interp(t, v0[0], v1[0]),
+                interp(t, v0[1], v1[1]))
+
+    if len(v0) == 3:
+        return (interp(t, v0[0], v1[0]),
+                interp(t, v0[1], v1[1]),
+                interp(t, v0[2], v1[2]))
+
+    if len(v0) == 4:
+        return (interp(t, v0[0], v1[0]),
+                interp(t, v0[1], v1[1]),
+                interp(t, v0[2], v1[2]),
+                interp(t, v0[3], v1[3]))
 
 class Mesh(geometry.base):
     primitive = gl.GL_TRIANGLES
@@ -105,14 +131,43 @@ class Mesh(geometry.base):
 
 class gltf(assembly.assembly):
     def __init__(self, filename):
-        gltf = GLTF2().load(filename)
-        mesh = gltf.meshes[gltf.scenes[gltf.scene].nodes[0]]
+        self.gltf = gltf = GLTF2().load(filename)
+        self.nodeid = gltf.scenes[gltf.scene].nodes[0]
+        self.node = gltf.nodes[self.nodeid]
+        mesh = gltf.meshes[self.nodeid]
         primitive = mesh.primitives[0]
-
-        print(primitive)
 
         vertices = self.readFromAccessor(gltf, primitive.attributes.POSITION)
         indices = self.readFromAccessor(gltf, primitive.indices)
+
+        for animation in gltf.animations:
+            # Meh, only one for now
+            self.animSamplers = []
+            for sampler in animation.samplers:
+                input = self.readFromAccessor(gltf, sampler.input)
+                output = self.readFromAccessor(gltf, sampler.output)
+
+                if len(input) != len(output):
+                    raise RuntimeError("Wrong size!")
+
+                animSampler = []
+                for inp,out in zip(input, output):
+                    animSampler.append((inp, out))
+
+                print(animSampler)
+                self.animSamplers.append(animSampler)
+
+        camera_node = self.getNodeByName(gltf.nodes, 'Camera')
+        self.view = np.eye(4, dtype=np.float32)
+#        transforms.rotate(self.view, -100, 0, 1, 0)
+#        if camera_node.rotation:
+#            transforms.rotateQ(self.view, camera_node.rotation[0], camera_node.rotation[1], camera_node.rotation[2], camera_node.rotation[3] )
+#            transforms.rotate(self.view, -50, 0.82, -0.39, 0.39)
+#        if camera_node.translation:
+#            transforms.translate(self.view, *camera_node.translation)
+#        if camera_node.scale:
+#            transforms.scale(self.view, *camera_node.scale)
+
         images = []
 
         for image in gltf.images[:1]: # only one texture for now
@@ -128,9 +183,16 @@ class gltf(assembly.assembly):
 
         self.geometry = Mesh(primitive.mode, vertices, indices, images)
 
+    def getNodeByName(self, nodes, name):
+        found = [node for node in nodes if node.name == name]
+        if found:
+            return found[0]
+
+        return None
+
     def getFormat(self, componentType, type):
         formats = { 5123: "H", 5126: "f" }
-        types = { "SCALAR": 1, "VEC2":2, "VEC3": 3 }
+        types = { "SCALAR": 1, "VEC2":2, "VEC3": 3, "VEC4": 4 }
 
         if componentType not in formats:
             raise RuntimeError('Unknown format componentType %d' % componentType)
@@ -160,21 +222,64 @@ class gltf(assembly.assembly):
         # pull each vertex from the binary buffer and convert it into a tuple of python floats
         for i in range(accessor.count):
             index = bufferView.byteOffset + accessor.byteOffset + i*size  # the location in the buffer of this vertex
-            d = data[index:index+size]  # the vertex data
-            v = struct.unpack(format, d)   # convert from base64 to three floats
+            d = data[index:index+size]
+            v = struct.unpack(format, d)
             out.append(v)
 
         return out
 
+    def apply_animations(self, t):
+        for anim in self.gltf.animations:
+            for channel in anim.channels:
+                nodeid = channel.target.node
+                targetNode = self.gltf.nodes[nodeid]
+
+                val = self.interpolateAnim(channel.sampler, t)
+                setattr(targetNode, channel.target.path, val)
+
+    def interpolateAnim(self, sampler, t):
+        animSampler = self.animSamplers[sampler]
+        t = t % animSampler[-1][0][0]
+        for i in range(0, len(animSampler)):
+            keyFrame = animSampler[i]
+
+            if keyFrame[0][0] > t:
+                prevKeyFrame = animSampler[i-1]
+
+                t0 = prevKeyFrame[0][0]
+                t1 = keyFrame[0][0]
+                v0 = prevKeyFrame[1]
+                v1 = keyFrame[1]
+
+                dt = (t - t0) / (t1-t0)
+
+                ret = interp(dt, v0, v1)
+                #print("%r : %r/%r -> %r" % (dt, v0, v1, ret))
+                return ret
+
+        return self.animSamplers[sampler][0][1]
+
     def render(self, t):
+        self.apply_animations(t)
+
+        view = np.eye(4, dtype=np.float32)
+        model = np.eye(4, dtype=np.float32)
+        if self.node.rotation:
+            transforms.rotateQ(model, *self.node.rotation)
+        if self.node.translation:
+            transforms.translate(model, *self.node.translation)
+        if self.node.scale:
+            transforms.translate(model, *self.node.scale)
+
         self.geometry.time = t
+        self.geometry.modelview = np.dot(model, self.modelview)
         self.geometry.render()
 
     def setProjection(self, M):
         self.geometry.setProjection(M)
 
     def setModelView(self, M):
-        self.geometry.setModelView(M)
+        self.modelview = M
 
     def setAspect(self, M):
         self.geometry.aspect = M

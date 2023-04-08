@@ -25,6 +25,7 @@ class newyear(assembly.assembly):
             uniform mat4 modelview;
             uniform mat4 projection;
             uniform mat4 aspect;
+            uniform mat4 rotation;
             uniform vec4 objcolor;
             uniform float time;
             uniform float lifetime;
@@ -46,18 +47,21 @@ class newyear(assembly.assembly):
                 highp vec4 velocity = texelFetch(velocityTex, ivec2(texcoor), 0);
 
                 highp vec4 projectedCenter = aspect * projection * modelview * vec4(center, 1.0);
-                highp float scale = abs((projectedCenter.z - 100.0) * 0.4);
-                scale = max(scale, 1.0);
+                highp vec4 prevProjectedCenter = aspect * projection * modelview * rotation * vec4(center, 1.0);
+                highp vec4 projectedRotationVelocity = projectedCenter - prevProjectedCenter;
+                highp float rmbscale = 100.0;  // Increase to make it more pronounced.
 
-                highp vec4 projectedVelocity = aspect * projection * modelview * vec4(velocity.xyz, 1.0);
-                //projectedVelocity = vec4(1.0, 1.0, 0.0, 1.0);
+                highp float scale = abs((projectedCenter.z - 100.0) * 0.4);
+                scale = max(scale, 0.5);
+
+                highp vec4 projectedObjectVelocity = aspect * projection * modelview * vec4(velocity.xyz, 1.0);
+                highp vec4 projectedVelocity = projectedObjectVelocity + projectedRotationVelocity * rmbscale;
                 highp vec2 velocity_2d = projectedVelocity.xy / length(projectedVelocity.xy);
-                highp vec2 velocity_2d_ortho = vec2(-velocity_2d.y, velocity_2d.x) / length(velocity_2d);
-                highp float mbscale = max(1.0, length(projectedVelocity.xy) / 100.0);
+                highp vec2 velocity_2d_ortho = vec2(-velocity_2d.y, velocity_2d.x);
+                highp float mbscale = clamp(length(projectedVelocity.xy) / 100.0, 1.0, 10.0);
 
                 highp vec2 transformed_position = (position.x * velocity_2d_ortho) + (position.y * velocity_2d * mbscale);
-                gl_Position = (vec4(position, 0.0, 1.0) * scale + projectedCenter) * aspect;
-            
+                gl_Position = (vec4(transformed_position, 0.0, 1.0) * scale + projectedCenter);
                 highp float brightness = 1.0/pow(scale, 2.0);
                 brightness *= 100.0 / projectedCenter.z;
                 highp float sparkle = (1.0 + sin((time - postex.w) * 10.0)) / 2.0;
@@ -87,7 +91,7 @@ class newyear(assembly.assembly):
                 f_color = vec4(v_color.rgb * v_color.a * clamp(pow((1.0 - length(v_texcoor)),0.5), 0.0, 1.0), 1.0);
             } """
 
-        def __init__(self, positionTex, colorTex, velocityTex, depthTex, texcoors, lifetime, aspect):
+        def __init__(self, positionTex, colorTex, velocityTex, depthTex, texcoors, lifetime, aspect, rotationSpeed):
             self.starcolor = (1,1,1,1)
             self.positionTex = positionTex
             self.velocityTex = velocityTex
@@ -97,8 +101,16 @@ class newyear(assembly.assembly):
             self.time = 0
             self.lifetime = lifetime
             self.aspect = aspect
+            self.rotationTransform = self.rotationSpeedToTransform(rotationSpeed)
 
             super(newyear.Stars, self).__init__()
+        
+        @staticmethod
+        def rotationSpeedToTransform(rotationSpeed):
+            rotationTransform = np.eye(4, dtype=np.float32)
+            fps = 60.0
+            transforms.yrotate(rotationTransform, -rotationSpeed / fps)
+            return rotationTransform
     
         def getVertices(self):
             verts = [(-1, -1), (+1, -1), (+1, +1), (-1, +1)]
@@ -118,7 +130,12 @@ class newyear(assembly.assembly):
             return { 'texcoor' : self.texcoor }
 
         def getUniforms(self):
-            return { 'time' : (self.time,), 'lifetime' : (self.lifetime,), 'aspect': self.aspect }
+            return { 
+                'time' : (self.time,), 
+                'lifetime' : (self.lifetime,), 
+                'aspect': self.aspect,
+                'rotation': self.rotationTransform,
+            }
 
     class VelocityShader(geometry.simple.texquad):
         fragment_code = """
@@ -130,8 +147,8 @@ class newyear(assembly.assembly):
 
             void main()
             {
-                highp float drag = 0.010;
-                highp float gravity = 400.0;
+                highp float drag = 0.002;
+                highp float gravity = 200.0;
 
                 highp vec4 currentSpeed = textureLod(velocityTex, v_texcoor, 0.0);
                 highp vec4 currentPos = vec4(textureLod(positionTex, v_texcoor, 0.0).xyz, 0.0);
@@ -152,7 +169,7 @@ class newyear(assembly.assembly):
         def getTextures(self):
             return { 'velocityTex' : self.velocityTex, 'positionTex': self.positionTex }
 
-    def __init__(self, depthTex):
+    def __init__(self, depthTex, rotationSpeed):
         self.depthTex = depthTex
         self.last = 0
         self.lastx = self.lasty = self.lastz = 0
@@ -184,7 +201,8 @@ class newyear(assembly.assembly):
             self.depthTex,
             texcoors, 
             self.lifetime, 
-            self.aspect
+            self.aspect,
+            rotationSpeed,
         )
 
     def addstar(self, t, dx, dy, dz):

@@ -44,6 +44,8 @@ ps = []
 screenWidth = 0
 screenHeight = 0
 
+rotationSpeed = 30  # °/s
+
 def reltime():
     global start, lastTime, args
 
@@ -71,9 +73,9 @@ def display():
         clear()
 
         modelview = np.eye(4, dtype=np.float32)
-        transforms.scale(modelview, 3, 3, 3)
+        transforms.scale(modelview, 30, 30, 30)
         transforms.yrotate(modelview, t * 30)
-        transforms.translate(modelview, 0, 0, -100)
+        transforms.translate(modelview, 0, 0, -10)
         gltf.setModelView(modelview)
         gltf.render(t)
 
@@ -83,7 +85,7 @@ def display():
         gltf.render(t)
 
         modelview = np.eye(4, dtype=np.float32)
-        transforms.yrotate(modelview, t*30)
+        transforms.yrotate(modelview, t * rotationSpeed)
         #transforms.translate(modelview, 0, -.03, -.5)
         transforms.translate(modelview, 0, 0, -100)
         effect.setModelView(modelview)
@@ -168,13 +170,13 @@ hbloomquad = geometry.simple.blurtexquad(gain = 5, blurvector = (0.1, 0))
 hbloomquad.setTexture(mainfbo.getTexture())
 vbloomquad = geometry.simple.blurtexquad(gain = 5, blurvector = (0, 0.1))
 vbloomquad.setTexture(hbloomfbo.getTexture())
-\
+
 gl.glEnable(gl.GL_FRAMEBUFFER_SRGB)
 
 # Effect
 import assembly.newyear
 
-effect = assembly.newyear.newyear(depthfbo.getDepthTexture())
+effect = assembly.newyear.newyear(depthfbo.getDepthTexture(), rotationSpeed)
 import pyrr
 
 aspect = np.eye(4, dtype=np.float32)
@@ -183,7 +185,7 @@ projection = pyrr.matrix44.create_perspective_projection(20, 1.0, .5, 1000)
 effect.setProjection(projection)
 effect.setAspect(aspect)
 
-gltf = assembly.gltf.gltf('anim.glb')
+gltf = assembly.gltf.gltf('test.glb')
 gltf.setProjection(projection)
 gltf.color = (5,5,5,1)
 
