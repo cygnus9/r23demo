@@ -154,7 +154,7 @@ class base(object):
         data = np.zeros(size, format)
 
         for attrib in attrNames:
-            if attrData[attrib]:
+            if attrib in attrData:
                 data[attrib] = attrData[attrib]
 
         # Upload data

@@ -84,7 +84,6 @@ class newyear(assembly.assembly):
 
             void main()
             {
-                //f_color = vec4(v_color.rgb * v_color.a, 1.0);
                 f_color = vec4(v_color.rgb * v_color.a * clamp(pow((1.0 - length(v_texcoor)),0.5), 0.0, 1.0), 1.0);
             } """
 

@@ -18,7 +18,7 @@ class Mesh(geometry.base):
     srcblend = gl.GL_SRC_ALPHA
     dstblend = gl.GL_ONE_MINUS_SRC_ALPHA
 
-    attributes = { 'position' : 3, 'tex': 2 }
+    attributes = { 'position' : 3, 'texcoors0': 2 }
 
     vertex_code = """
         uniform mat4 modelview;
@@ -28,37 +28,40 @@ class Mesh(geometry.base):
 
         in highp vec4 color;
         in highp vec3 position;
-        in highp vec2 tex;
+        in highp vec2 texcoors0;
 
         out highp vec4 v_color;
-        out highp vec2 v_tex;
+        out highp vec2 v_texcoors0;
         void main()
         {
             gl_Position = aspect * projection * modelview * vec4(position,1.0);
             v_color = vec4(5.0,5.0,5.0,1.0); //objcolor;
-            v_tex = tex;
+            v_texcoors0 = texcoors0;
         }
     """
 
     fragment_code = """
         in highp vec4 v_color;
-        in highp vec2 v_tex;
+        in highp vec2 v_texcoors0;
         out highp vec4 f_color;
         uniform sampler2D texture0;
 
         void main()
         {
-            highp vec4 texel = texture(texture0, v_tex);
+            highp vec4 texel = texture(texture0, v_texcoors0);
             f_color = texel * v_color;
         }
     """
 
-    def __init__(self, vertices, indices, texcoors, image):
+    def __init__(self, vertices, indices, images):
         self.vertices = vertices
         self.indices = indices
-        self.texcoors = texcoors
-        self.tex = self.loadImage(image)
+        self.textures = []
+
+        for image in images:
+            self.textures.append((self.loadImage(image[0]), image[1]))
         self.aspect = np.eye(4, dtype=np.float32)
+
         super().__init__()
 
     def loadImage(self, im):
@@ -73,10 +76,18 @@ class Mesh(geometry.base):
         return tex
 
     def getVertices(self):
-        return { 'position' : self.vertices, 'tex': self.texcoors }
+        vertAttribs = { 'position' : self.vertices }
+        for i, texture in enumerate(self.textures):
+            vertAttribs['texcoors%d' % i] = texture[1]
+
+        return vertAttribs
 
     def getTextures(self):
-        return { 'texture0': self.tex }
+        textures = {}
+        for i, texture in enumerate(self.textures):
+            textures['texture%d' % i] = texture[0]
+
+        return textures
 
     def getInstances(self):
         return { }
@@ -97,19 +108,20 @@ class gltf(assembly.assembly):
 
         vertices = self.readFromAccessor(gltf, primitive.attributes.POSITION)
         indices = self.readFromAccessor(gltf, primitive.indices)
-        texcoors = self.readFromAccessor(gltf, primitive.attributes.TEXCOORD_0)
         images = []
 
-        for image in gltf.images:
+        for image in gltf.images[:1]: # only one texture for now
+            texcoors = self.readFromAccessor(gltf, primitive.attributes.TEXCOORD_0)
+
             bufferView = gltf.bufferViews[image.bufferView]
             buffer = gltf.buffers[bufferView.buffer]
             data = gltf.get_data_from_buffer_uri(buffer.uri)
             stream = BytesIO(data)
             im = Image.open(stream)
             im.tobytes()
-            images.append(im)
+            images.append((im, texcoors))
 
-        self.geometry = Mesh(vertices, indices, texcoors, images[0])
+        self.geometry = Mesh(vertices, indices, images)
 
     def getFormat(self, componentType, type):
         formats = { 5123: "H", 5126: "f" }
