@@ -149,7 +149,7 @@ class newyear(assembly.assembly):
             void main()
             {
                 highp float drag = 0.001;
-                highp float gravity = 0.0;
+                highp float gravity = 0.0000001;
 
                 highp vec4 currentSpeed = vec4(textureLod(velocityTex, v_texcoor, 0.0).xyz, 1.0);
                 highp vec4 currentPos = vec4(textureLod(positionTex, v_texcoor, 0.0).xyz, 1.0);
