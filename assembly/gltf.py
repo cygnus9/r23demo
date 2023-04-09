@@ -68,7 +68,6 @@ class Mesh(geometry.base):
     srcblend = gl.GL_SRC_ALPHA
     dstblend = gl.GL_ONE_MINUS_SRC_ALPHA
 
-    attributes = { 'position' : 3, 'texcoors0': 2 }
 
     vertex_code = """
         uniform mat4 modelview;
@@ -106,6 +105,8 @@ class Mesh(geometry.base):
     """
 
     def __init__(self, mode, vertices, indices, images):
+        self.attributes = { 'position' : 3 }
+
         self.primitive = mode
         self.vertices = vertices
         self.indices = indices
@@ -114,6 +115,7 @@ class Mesh(geometry.base):
         for i, image in enumerate(images):
             self.defines += "#define TEXTURE%d" % i
             self.textures.append((self.loadImage(image[0]), image[1]))
+            self.attributes['texcoor%d' % i] = 2
         self.aspect = np.eye(4, dtype=np.float32)
 
         super().__init__()
