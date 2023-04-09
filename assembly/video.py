@@ -11,15 +11,11 @@ class video(geometry.simple.texquad):
         uniform sampler2D tex;
         out highp vec4 f_color;
         in highp vec2 v_texcoor;
+        in highp vec4 v_color;
         
         void main()
         {
-            highp ivec2 coor;
-            
-            coor.x = int(v_texcoor.x);
-            coor.y = int(v_texcoor.y);
-
-            f_color = texelFetch(tex, coor, 0);
+            f_color = textureLod(tex, v_texcoor * vec2(-1, 1), 0.0) * v_color;
         } """
         
     def __init__(self, filename):
@@ -45,10 +41,10 @@ class video(geometry.simple.texquad):
         self.aspect = M
 
     def getVertices(self):
-        aspect = float(self.h)/float(self.w)
+        aspect = 1 #float(self.h)/float(self.w)
 #        verts = [(-1, +aspect), (+1, +aspect), (+1, -aspect), (-1, -aspect)]
         verts = [(-1/aspect, 1), (+1/aspect, 1), (+1/aspect, -1), (-1/aspect, -1)]
-        coors = [(self.w, 0), (0, 0), (0, self.h), (self.w, self.h)]
+        coors = [(1, 0), (0, 0), (0, 1), (1, 1)]
         
         return { 'position' : verts, 'texcoor' : coors }
 

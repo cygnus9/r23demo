@@ -38,6 +38,8 @@ import assembly.gltf
 import geometry.ws2811
 import geometry.hub75e
 
+bpm = 140
+freq = 200
 start = time.time()
 lastTime = 0
 
@@ -55,7 +57,7 @@ def reltime():
     else:
         t = time.time() - start
 
-    dt = lastTime - t
+    dt = t - lastTime
     lastTime = t
 
     return t, dt
@@ -78,68 +80,96 @@ def do_gltf_depth_buffer(t):
         gltf.setModelView(modelview)
         gltf.render(t)
 
+def clamp(v, min, max):
+    if v < min:
+        return min
+    if v > max:
+        return max
+    return v
+
+def inout(v, inp, out, end):
+    if v < inp:
+        return v / inp
+    if v < out:
+        return 1
+    return 1 - (v - out) / (end-out)
+
+def beat(v, bpm):
+    spb = 1.0 / (bpm/60)
+
+    beat = (v % spb) / spb
+
+    return math.pow(1 - beat, 2)
 
 def display():
     global args, mainfbo, texquad, signalgenerator
 
-    t, dt = reltime()
+    maint, dt = reltime()
 
-    # TODO: move to assembly for "newyear" space effect
-    if True:
-        do_gltf_depth_buffer(t)
-
-    with mainfbo:
+    if maint < 8.0:
+        t = maint
         clear()
-
+        video.color = (1,1,1,inout(t, 1.0, 7.0, 8.0))
+        video.render(t)
+    else:
+        t = maint - 8
         # TODO: move to assembly for "newyear" space effect
-        if False:
-            gltf.render(t)
+        if True:
+            do_gltf_depth_buffer(t)
 
-        modelview = np.eye(4, dtype=np.float32)
-        transforms.translate(modelview, -20, 0, 0)
-        transforms.yrotate(modelview, 90)
-        #transforms.translate(modelview, 0, -.03, -.5)
+        with mainfbo:
+            clear()
 
-        cam = gltf.getNodeModels('Camera')
-        modelview = numpy.linalg.inv(cam[0]['model'])
+            # TODO: move to assembly for "newyear" space effect
+            if True:
+                gltf.render(t)
 
-        effect.setModelView(modelview)
-        effect.render(t)
-        effect.step(t)
+            modelview = np.eye(4, dtype=np.float32)
+            transforms.translate(modelview, -20, 0, 0)
+            transforms.yrotate(modelview, 90)
+            #transforms.translate(modelview, 0, -.03, -.5)
+
+            cam = gltf.getNodeModels('Camera')
+            modelview = numpy.linalg.inv(cam[0]['model'])
+
+            effect.setModelView(modelview)
+            effect.render(t)
+            effect.step(t)
 
 
-    gl.glClearColor(0, 0, 0, 0)
-    gl.glClear(gl.GL_COLOR_BUFFER_BIT| gl.GL_DEPTH_BUFFER_BIT)
-
-    gl.glViewport(0, 0, screenWidth, screenHeight)
-
-    with hbloomfbo:
+        gl.glClearColor(0, 0, 0, 0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT| gl.GL_DEPTH_BUFFER_BIT)
-        hbloomquad.render()
 
-    texquad.color = (0.08, 0.08, 0.08, 1.0)
-    texquad.render()
-    vbloomquad.color = (0.002, 0.002, 0.002, 1.0)
-    vbloomquad.render()
+        gl.glViewport(0, 0, screenWidth, screenHeight)
 
-#    dquad.render()
-#    dquad.color = (0.1, 0.1, 0.1, 1.0)
+        with hbloomfbo:
+            gl.glClear(gl.GL_COLOR_BUFFER_BIT| gl.GL_DEPTH_BUFFER_BIT)
+            hbloomquad.render()
+
+        h = 4 * beat(t, bpm) + 1
+        texquad.color = (0.08 * h, 0.08 * h, 0.08 * h, 1.0)
+        texquad.render()
+        vbloomquad.color = (0.002, 0.002, 0.002, 1.0)
+        vbloomquad.render()
+
+        for node in gltf.getNodePositions('Cube'):
+            n = int(t * freq) - int((t-dt) * freq)
+
+            for i in range(0, n):
+                x,y,z = node['pos']
+                r,g,b,a = node['color']
+
+                d = 0.01
+                dx = random.uniform(-d, d)
+                dy = random.uniform(-d, d)
+                dz = random.uniform(-d, d)
+
+                effect.addstar(t, x, y, z, dx, dy, dz, r*2, g*2, b*2)
 
     glut.glutSwapBuffers()
     glut.glutPostRedisplay()
 
-    for node in gltf.getNodePositions('Cube'):
-        x,y,z = node['pos']
-        r,g,b,a = node['color']
 
-        d = 0.01
-        dx = random.uniform(-d, d)
-        dy = random.uniform(-d, d)
-        dz = random.uniform(-d, d)
-
-        effect.addstar(t, x, y, z, dx, dy, dz, r*2, g*2, b*2)
-
-    
 def reshape(width,height):
     global screenWidth, screenHeight
     
@@ -182,7 +212,7 @@ glut.glutDisplayFunc(display)
 glut.glutKeyboardFunc(keyboard)
 
 # Primary offscreen framebuffer
-X, Y = 960, 540
+X, Y = 1920, 1080
 mainfbo = fbo.FBO(X, Y)
 depthfbo = fbo.FBO(X, Y)
 hbloomfbo = fbo.FBO(512, 512)
@@ -204,7 +234,7 @@ gl.glEnable(gl.GL_FRAMEBUFFER_SRGB)
 # Effect
 import assembly.newyear
 import assembly.video
-#effect = assembly.video.video("flaming-marshmellows.mp4")
+video = assembly.video.video("fm.avi")
 
 import pyrr
 
