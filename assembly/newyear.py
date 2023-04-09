@@ -32,7 +32,6 @@ class newyear(assembly.assembly):
 
             uniform sampler2D positionTex;
             uniform sampler2D colorTex;
-            uniform sampler2D velocityTex;
             uniform sampler2D depthTex;
 
             in highp vec2 position;
@@ -46,23 +45,14 @@ class newyear(assembly.assembly):
                 highp vec4 postex = texelFetch(positionTex, ivec2(texcoor), 0);
                 highp vec3 center = postex.xyz;
                 highp vec4 color = vec4(texelFetch(colorTex, ivec2(texcoor), 0).rgb, 1.0);
-                highp vec4 velocity = texelFetch(velocityTex, ivec2(texcoor), 0);
 
                 highp vec4 projectedCenter = projection * aspect * modelview * vec4(center, 1.0);
                 highp vec4 prevProjectedCenter = projection * aspect * modelview * rotation * vec4(center, 1.0);
-                highp vec4 projectedRotationVelocity = projectedCenter - prevProjectedCenter;
                 highp float rmbscale = 100.0;  // Increase to make it more pronounced.
 
                 highp float scale = abs((projectedCenter.z - focusdist) * 0.01);
                 scale = clamp(scale, 0.01, 0.08);
 
-                highp vec4 projectedObjectVelocity = aspect * projection * modelview * vec4(velocity.xyz, 1.0);
-                highp vec4 projectedVelocity = projectedObjectVelocity + projectedRotationVelocity * rmbscale;
-                highp vec2 velocity_2d = projectedVelocity.xy / length(projectedVelocity.xy);
-                highp vec2 velocity_2d_ortho = vec2(-velocity_2d.y, velocity_2d.x);
-                highp float mbscale = clamp(length(projectedVelocity.xy) / 100.0, 1.0, 10.0);
-
-                highp vec2 transformed_position = (position.x * velocity_2d_ortho) + (position.y * velocity_2d * mbscale);
                 gl_Position = (vec4(position, 0.0, 1.0) * scale * aspect + normalize(projectedCenter));
                 highp float brightness = 0.001/pow(scale, 2.0);
                 //brightness *= 0.001;
@@ -126,7 +116,6 @@ class newyear(assembly.assembly):
             return {
                 'colorTex': self.colorTex, 
                 'positionTex': self.positionTex,
-                'velocityTex': self.velocityTex,
                 'depthTex': self.depthTex
             }
 
