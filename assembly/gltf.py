@@ -286,6 +286,9 @@ class gltf(assembly.assembly):
             v0 = prevKeyFrame[1]
             v1 = keyFrame[1]
 
+            if t0 == t1:
+                return v0
+
             dt = (t - t0) / (t1-t0)
 
             ret = interp(dt, v0, v1)
@@ -332,10 +335,16 @@ class gltf(assembly.assembly):
             modelview = np.dot(model['model'], self.modelview)
 
             v = np.dot(pos, modelview)
-            points.append({
+            point = {
                 'pos' : (v[0]/v[3], v[1]/v[3], v[2]/v[3]),
-                'color': self.gltf.materials[self.gltf.meshes[model['node'].mesh].primitives[0].material].pbrMetallicRoughness.baseColorFactor,
-                'node' : model['node'] })
+                'node' : model['node'] }
+
+            try:
+                point['color'] = self.gltf.materials[self.gltf.meshes[model['node'].mesh].primitives[0].material].pbrMetallicRoughness.baseColorFactor
+            except:
+                point['color'] = (1,1,1,1)
+
+            points.append(point)
 
         return points
 

@@ -22,7 +22,7 @@ import pygame
 def start_music():
     pygame.init()
     pygame.mixer.init()
-    pygame.mixer.music.load('loreen.mp3')
+    pygame.mixer.music.load('music.ogg')
     pygame.mixer.music.play()
 
 import assembly.copperbar
@@ -39,9 +39,10 @@ import geometry.ws2811
 import geometry.hub75e
 
 bpm = 140
-freq = 200
-start = time.time()
-lastTime = 0
+freq = 250
+start = None
+lastTime = None
+prevPos = None
 
 ps = []
 screenWidth = 0
@@ -49,13 +50,21 @@ screenHeight = 0
 
 rotationSpeed = 30  # °/s
 
+def interp(t, v0, v1):
+    w0 = 1-t
+    w1 = t
+
+    return w0 * v0 + w1 * v1
+
 def reltime():
     global start, lastTime, args
 
-    if args.music:
-         t = ((pygame.mixer.music.get_pos()-1100) / 454.3438)
-    else:
-        t = time.time() - start
+
+    t = pygame.mixer.music.get_pos() / 1000 
+
+    if start is None:
+        start = t
+        lastTime = start
 
     dt = t - lastTime
     lastTime = t
@@ -102,11 +111,12 @@ def beat(v, bpm):
     return math.pow(1 - beat, 2)
 
 def display():
-    global args, mainfbo, texquad, signalgenerator
+    global args, mainfbo, texquad, signalgenerator, prevPos
 
     maint, dt = reltime()
 
-    introtime = 0.0
+    introtime = 8.0
+    switchtime = 6.0
 
     if maint < introtime:
         t = maint
@@ -125,13 +135,13 @@ def display():
             if True:
                 gltf.apply_animations(t)
 
-            modelview = np.eye(4, dtype=np.float32)
-            transforms.translate(modelview, -20, 0, 0)
-            transforms.yrotate(modelview, 90)
-            #transforms.translate(modelview, 0, -.03, -.5)
-
-            cam = gltf.getNodeModels('Camera')
-            modelview = numpy.linalg.inv(cam[0]['model'])
+            if t > switchtime:
+                modelview = np.eye(4, dtype=np.float32)
+                transforms.yrotate(modelview, t * 30)
+                transforms.translate(modelview, 0, 0, -100)
+            else:
+                cam = gltf.getNodeModels('Camera')
+                modelview = numpy.linalg.inv(cam[0]['model'])
 
             effect.setModelView(modelview)
             effect.render(t)
@@ -148,24 +158,67 @@ def display():
             hbloomquad.render()
 
         h = 4 * beat(t, bpm) + 1
+        h = 1
         texquad.color = (0.08 * h, 0.08 * h, 0.08 * h, 1.0)
         texquad.render()
         vbloomquad.color = (0.002, 0.002, 0.002, 1.0)
         vbloomquad.render()
 
-        for node in gltf.getNodePositions('Cube'):
+        if t < switchtime:
+            effect.setFocus(10  )
             n = int(t * freq) - int((t-dt) * freq)
-
             for i in range(0, n):
-                x,y,z = node['pos']
-                r,g,b,a = node['color']
+                st = interp(i/n, t-dt, t)
+                gltf.apply_animations(st)
 
-                d = 0.01
-                dx = random.uniform(-d, d)
-                dy = random.uniform(-d, d)
-                dz = random.uniform(-d, d)
+                for node in gltf.getNodePositions('Cube'):
+                    x,y,z = node['pos']
+                    r,g,b,a = node['color']
 
-                effect.addstar(t, x, y, z, dx, dy, dz, r*2, g*2, b*2)
+                    d = 0.01
+                    dx = random.uniform(-d, d)
+                    dy = random.uniform(-d, d)
+                    dz = random.uniform(-d, d)
+
+                    effect.addstar(t, x, y, z, dx, dy, dz, r*2, g*2, b*2)
+
+        else:   
+            effect.setFocus(100)
+            effect.setGravity(100)
+            effect.setDrag(0)
+            n = int(t * freq) - int((t-dt) * freq)
+            a = 0.4 * t * 2 * math.pi
+            l = 5 * math.sin (t * 2 * math.pi * .3) + 8
+            b = 0
+            l2 = 0
+
+            nx = math.sin(a) * l * 1.5
+            ny = math.cos(a) * l * 1.5
+            nz = math.cos(a) * l2 * 1.5
+            
+            for i in range(0, n):
+                st = i/n
+                
+                sx = sy = sz = 0
+                if not prevPos:
+                    prevPos = (nx,ny,nz)
+                    
+                sx = nx - prevPos[0]
+                sy = ny - prevPos[1]
+                sz = nz = prevPos[2]
+                
+                    
+                dx = sx/dt + random.uniform(-1, 1)
+                dy = sy/dt + random.uniform(-1, 1)
+                dz = sz/dt + random.uniform(-1, 1)
+                
+                (x,y,z) = (interp(st, prevPos[0], nx), interp(st, prevPos[1], ny), interp(st, prevPos[2], nz))
+                
+                r,g,b = random.choice([(1.5, 1.8, 0.3), (1.5, 1.3, 0.8)])
+
+                effect.addstar(t, x, y, z, dx/5, dy/5, dz/5, r, g, b)
+
+            prevPos = (nx,ny,nz)
 
     glut.glutSwapBuffers()
     glut.glutPostRedisplay()
@@ -232,6 +285,9 @@ vbloomquad.setTexture(hbloomfbo.getTexture())
 
 gl.glEnable(gl.GL_FRAMEBUFFER_SRGB)
 
+start_music()
+
+
 # Effect
 import assembly.newyear
 import assembly.video
@@ -240,7 +296,7 @@ video = assembly.video.video("fm.avi")
 import pyrr
 
 aspect = np.eye(4, dtype=np.float32)
-projection = pyrr.matrix44.create_perspective_projection(25, 1.0, 1, 1000)
+projection = pyrr.matrix44.create_perspective_projection(15, 1.0, 1, 1000)
 
 gltf = assembly.gltf.gltf('text.gltf')
 gltf.setProjection(projection)
@@ -249,9 +305,6 @@ gltf.color = (5,5,5,1)
 effect = assembly.newyear.newyear(depthfbo.getDepthTexture(), rotationSpeed)
 effect.setProjection(projection)
 effect.setAspect(aspect)
-
-if args.music:
-    start_music()
 
 if args.fullscreen:
     glut.glutFullScreen()

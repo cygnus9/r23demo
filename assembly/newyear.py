@@ -11,7 +11,7 @@ import fbo
 from datetime import datetime
 
 class newyear(assembly.assembly):
-    freq = 250
+    freq = 500
 
     class Stars(geometry.base):
         primitive = gl.GL_QUADS
@@ -37,6 +37,8 @@ class newyear(assembly.assembly):
 
             in highp vec2 position;
             in highp vec2 texcoor;
+            uniform highp float focusdist;
+            
             out highp vec4 v_color;
             out highp vec2 v_texcoor;
             void main()
@@ -51,9 +53,8 @@ class newyear(assembly.assembly):
                 highp vec4 projectedRotationVelocity = projectedCenter - prevProjectedCenter;
                 highp float rmbscale = 100.0;  // Increase to make it more pronounced.
 
-                highp float scale = abs((projectedCenter.z - 5.5) * 1.0);
-                scale = max(scale, 0.1);
-                scale = min(scale, 4.0);
+                highp float scale = abs((projectedCenter.z - focusdist) * 0.01);
+                scale = clamp(scale, 0.01, 0.08);
 
                 highp vec4 projectedObjectVelocity = aspect * projection * modelview * vec4(velocity.xyz, 1.0);
                 highp vec4 projectedVelocity = projectedObjectVelocity + projectedRotationVelocity * rmbscale;
@@ -62,9 +63,9 @@ class newyear(assembly.assembly):
                 highp float mbscale = clamp(length(projectedVelocity.xy) / 100.0, 1.0, 10.0);
 
                 highp vec2 transformed_position = (position.x * velocity_2d_ortho) + (position.y * velocity_2d * mbscale);
-                gl_Position = (vec4(transformed_position, 0.0, 1.0) * scale * aspect + projectedCenter);
-                highp float brightness = 1.0/pow(scale, 2.0);
-                brightness *= 0.1 / projectedCenter.z;
+                gl_Position = (vec4(position, 0.0, 1.0) * scale * aspect + normalize(projectedCenter));
+                highp float brightness = 0.001/pow(scale, 2.0);
+                //brightness *= 0.001;
                 highp float sparkle = (1.0 + sin((time - postex.w) * 10.0)) / 2.0;
                 highp float fade = clamp(1.0 - ((time - postex.w) / lifetime), 0.0, 1.0);
 
@@ -75,6 +76,7 @@ class newyear(assembly.assembly):
                 highp float zLinear = 2.0 * near * far / (far + near - depthSample * (far - near));
                 if (zLinear < gl_Position.z) {
                     v_color = vec4(0.0, 0.0, 0.0, 1.0);
+                    gl_Position = vec4(0.0);
                 } else {
                     v_color =  objcolor * color * vec4(vec3(brightness * sparkle * fade), 1.0);
                 }
@@ -102,6 +104,7 @@ class newyear(assembly.assembly):
             self.time = 0
             self.lifetime = lifetime
             self.aspect = aspect
+            self.focusdist = 10.0
             self.rotationTransform = self.rotationSpeedToTransform(rotationSpeed)
 
             super(newyear.Stars, self).__init__()
@@ -136,6 +139,7 @@ class newyear(assembly.assembly):
                 'lifetime' : (self.lifetime,), 
                 'aspect': self.aspect,
                 'rotation': self.rotationTransform,
+                'focusdist': (self.focusdist, )
             }
 
     class VelocityShader(geometry.simple.texquad):
@@ -145,12 +149,11 @@ class newyear(assembly.assembly):
             uniform highp float dt;
             out highp vec4 f_color;
             in highp vec2 v_texcoor;
+            uniform highp float gravity;
+            uniform highp float drag;
 
             void main()
             {
-                highp float drag = 0.001;
-                highp float gravity = 0.0000001;
-
                 highp vec4 currentSpeed = vec4(textureLod(velocityTex, v_texcoor, 0.0).xyz, 1.0);
                 highp vec4 currentPos = vec4(textureLod(positionTex, v_texcoor, 0.0).xyz, 1.0);
                 f_color = currentSpeed * (1.0 - (drag * dt * length(currentSpeed))) - normalize(currentPos) * pow(length(currentPos), -2.0) * dt * gravity;
@@ -161,11 +164,13 @@ class newyear(assembly.assembly):
             self.dt = 0
             self.velocityTex = None
             self.positionTex = None
+            self.gravity = 0.000001
+            self.drag = 0.001
 
             super().__init__()
 
         def getUniforms(self):
-            return { 'dt' : (self.dt,) }
+            return { 'dt' : (self.dt,), 'gravity': (self.gravity,), 'drag': (self.drag,) }
 
         def getTextures(self):
             return { 'velocityTex' : self.velocityTex, 'positionTex': self.positionTex }
@@ -206,6 +211,15 @@ class newyear(assembly.assembly):
             self.aspect,
             rotationSpeed,
         )
+        
+    def setGravity(self, gravity):
+        self.velocityChanger.gravity = gravity
+        
+    def setDrag(self, drag):
+        self.velocityChanger.drag = drag
+        
+    def setFocus(self, focusdist):
+        self.geometry.focusdist = focusdist
 
     def addstar(self, t, x, y, z, dx, dy, dz, r, g, b):
         shift = random.uniform(0, 1)
