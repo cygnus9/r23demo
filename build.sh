@@ -11,7 +11,7 @@ pip3 install -r ../requirements.txt
 echo "Installing demo"
 cd ..
 cp transforms.py fbo.py demo.py twinkle/
-cp text.gltf fm.mp4 twinkle/
+cp text.gltf fm.mp4 music.ogg twinkle/
 mkdir -p twinkle/assembly
 cp assembly/*py twinkle/assembly
 mkdir -p twinkle/geometry

@@ -14,7 +14,7 @@ Write-Host -ForegroundColor Blue "Building executable"
 Start-Process -Wait -NoNewWindow -FilePath "twinkle\Scripts\pyinstaller" -ArgumentList "--onefile","demo.py" -WorkingDirectory "twinkle"
 
 Write-Host -ForegroundColor Blue "Packaging demo"
-Compress-Archive -Update -LiteralPath "fm.mp4","text.gltf","twinkle\dist\demo.exe" -DestinationPath "twinkle-demo.zip" -CompressionLevel "Optimal"
+Compress-Archive -Update -LiteralPath "fm.mp4","music.ogg","text.gltf","twinkle\dist\demo.exe" -DestinationPath "twinkle-demo.zip" -CompressionLevel "Optimal"
 
 Write-Host -ForegroundColor Green "Cleaning up"
 Remove-Item -Force -Recurse -Path "twinkle"
