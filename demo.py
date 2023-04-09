@@ -16,8 +16,13 @@ import fbo
 import random
 import argparse
 import numpy
-
 import pygame
+
+# compatibility when we're running from a zip
+import os.path
+path = os.path.realpath(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(path)))
+
 
 def start_music():
     pygame.init()
@@ -247,6 +252,7 @@ def keyboard( key, x, y ):
     if key == b' ':
         print('%d', pygame.mixer.music.get_pos())
 
+
 parser = argparse.ArgumentParser(description='Amazing WS2811 VGA driver')
 parser.add_argument('--music', action='store_const', const=True, help='Sync to music')
 parser.add_argument('--fullscreen', action='store_true', help='Fullscreen mode')
@@ -291,7 +297,7 @@ start_music()
 # Effect
 import assembly.newyear
 import assembly.video
-video = assembly.video.video("fm.avi")
+video = assembly.video.video("fm.mp4")
 
 import pyrr
 
