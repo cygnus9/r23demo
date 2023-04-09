@@ -15,9 +15,14 @@ import time
 import fbo
 import random
 import argparse
-import numpy
 
 import pygame
+
+# compatibility when we're running from a zip
+import os.path
+path = os.path.realpath(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(path)))
+
 
 def start_music():
     pygame.init()
@@ -106,6 +111,7 @@ def display():
 
     maint, dt = reltime()
 
+    # set to 8 to enable, 0 to disable.
     introtime = 0.0
 
     if maint < introtime:
@@ -131,7 +137,7 @@ def display():
             #transforms.translate(modelview, 0, -.03, -.5)
 
             cam = gltf.getNodeModels('Camera')
-            modelview = numpy.linalg.inv(cam[0]['model'])
+            modelview = np.linalg.inv(cam[0]['model'])
 
             effect.setModelView(modelview)
             effect.render(t)
@@ -194,6 +200,7 @@ def keyboard( key, x, y ):
     if key == b' ':
         print('%d', pygame.mixer.music.get_pos())
 
+
 parser = argparse.ArgumentParser(description='Amazing WS2811 VGA driver')
 parser.add_argument('--music', action='store_const', const=True, help='Sync to music')
 parser.add_argument('--fullscreen', action='store_true', help='Fullscreen mode')
@@ -235,7 +242,7 @@ gl.glEnable(gl.GL_FRAMEBUFFER_SRGB)
 # Effect
 import assembly.newyear
 import assembly.video
-video = assembly.video.video("fm.avi")
+video = assembly.video.video("fm.mp4")
 
 import pyrr
 
