@@ -158,9 +158,8 @@ class Mesh(geometry.base):
 class gltf(assembly.assembly):
     def __init__(self, filename):
         self.gltf = gltf = GLTF2().load(filename)
-        self.nodeid = gltf.scenes[gltf.scene].nodes[0]
+        self.nodeid = gltf.scenes[gltf.scene].nodes[2]
         self.node = gltf.nodes[self.nodeid]
-        self.node = gltf.nodes[2]
         self.modelview = np.eye(4, dtype=np.float32)
         print(self.node)
         mesh = gltf.meshes[self.node.mesh]

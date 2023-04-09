@@ -106,23 +106,24 @@ def display():
 
     maint, dt = reltime()
 
-    if maint < 8.0:
+    introtime = 0.0
+
+    if maint < introtime:
         t = maint
         clear()
-        video.color = (1,1,1,inout(t, 1.0, 7.0, 8.0))
+        video.color = (1,1,1,inout(t, 1.0, introtime-1.0, introtime))
         video.render(t)
     else:
-        t = maint - 8
-        # TODO: move to assembly for "newyear" space effect
-        if True:
-            do_gltf_depth_buffer(t)
+        t = maint - introtime
 
+        do_gltf_depth_buffer(t)
+        # TODO: move to assembly for "newyear" space effect
         with mainfbo:
             clear()
 
             # TODO: move to assembly for "newyear" space effect
             if True:
-                gltf.render(t)
+                gltf.apply_animations(t)
 
             modelview = np.eye(4, dtype=np.float32)
             transforms.translate(modelview, -20, 0, 0)

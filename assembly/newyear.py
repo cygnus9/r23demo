@@ -52,8 +52,8 @@ class newyear(assembly.assembly):
                 highp float rmbscale = 100.0;  // Increase to make it more pronounced.
 
                 highp float scale = abs((projectedCenter.z - 5.5) * 1.0);
-                scale = max(scale, 0.04);
-                scale = min(scale, 8.0);
+                scale = max(scale, 0.1);
+                scale = min(scale, 4.0);
 
                 highp vec4 projectedObjectVelocity = aspect * projection * modelview * vec4(velocity.xyz, 1.0);
                 highp vec4 projectedVelocity = projectedObjectVelocity + projectedRotationVelocity * rmbscale;
