@@ -180,6 +180,7 @@ class newyear(assembly.assembly):
         self.tsize = 128
         self.lifetime = self.tsize * self.tsize / self.freq
         self.nextPixel = 0
+        self.gravity = 0
 
         self.positions = fbo.FBO(self.tsize, self.tsize)
         self.velocities = fbo.FBO(self.tsize, self.tsize)
@@ -208,8 +209,8 @@ class newyear(assembly.assembly):
         )
         
     def setGravity(self, gravity):
-        self.velocityChanger.gravity = gravity
-        
+        self.gravity = gravity
+
     def setDrag(self, drag):
         self.velocityChanger.drag = drag
         
@@ -256,6 +257,18 @@ class newyear(assembly.assembly):
         # from, we have to render to another FBO, and swap it around
         with self.velocitiesDest:
             self.velocityChanger.dt = dt
+            self.velocityChanger.singularity = (0,0,0)
+            self.velocityChanger.gravity = self.gravity
+            self.velocityChanger.velocityTex = self.velocities.getTexture()
+            self.velocityChanger.positionTex = self.positions.getTexture()
+            self.velocityChanger.dstblend = gl.GL_ZERO
+            self.velocityChanger.srcblend = gl.GL_ONE
+            self.velocityChanger.color = (1,1,1,1 - dt * 0.5)
+            self.velocityChanger.render()
+
+            self.velocityChanger.dt = dt
+            self.velocityChanger.singularity = (math.sin(t)*10,math.cos(t)*10,0)
+            self.velocityChanger.gravity = self.gravity * -2
             self.velocityChanger.velocityTex = self.velocities.getTexture()
             self.velocityChanger.positionTex = self.positions.getTexture()
             self.velocityChanger.dstblend = gl.GL_ZERO

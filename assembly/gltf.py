@@ -122,7 +122,7 @@ class Mesh(geometry.base):
         for i, image in enumerate(images):
             self.defines += "#define TEXTURE%d" % i
             self.textures.append((self.loadImage(image[0]), image[1]))
-            self.attributes['texcoor%d' % i] = 2
+            self.attributes['texcoors%d' % i] = 2
         self.aspect = np.eye(4, dtype=np.float32)
 
         super().__init__()
@@ -169,7 +169,6 @@ class gltf(assembly.assembly):
 
         if nodeName:
             self.node = self.getNodeByName(nodeName)
-            print(self.node)
             mesh = gltf.meshes[self.node.mesh]
             primitive = mesh.primitives[0]
 
@@ -182,13 +181,17 @@ class gltf(assembly.assembly):
             for image in gltf.images[:1]: # only one texture for now
                 texcoors = self.readFromAccessor(gltf, primitive.attributes.TEXCOORD_0)
 
-                bufferView = gltf.bufferViews[image.bufferView]
-                buffer = gltf.buffers[bufferView.buffer]
-                data = gltf.get_data_from_buffer_uri(buffer.uri)
-                stream = BytesIO(data)
-                im = Image.open(stream)
-                im.tobytes()
-                images.append((im, texcoors))
+                try:
+                    bufferView = gltf.bufferViews[image.bufferView]
+                    print(bufferView)
+                    buffer = gltf.buffers[bufferView.buffer]
+                    data = gltf.get_data_from_buffer_uri(buffer.uri)[bufferView.byteOffset:bufferView.byteOffset+bufferView.byteLength]
+                    stream = BytesIO(data)
+                    im = Image.open(stream, formats=['png'])
+                    images.append((im, texcoors))
+                except Exception as e:
+                    print("Failed to load %s: %s" % (buffer.uri[:80], e))
+                    pass
 
             self.geometry = Mesh(primitive.mode, vertices, normals, indices, images)
         else:
