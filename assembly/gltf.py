@@ -77,14 +77,20 @@ class Mesh(geometry.base):
 
         in highp vec4 color;
         in highp vec3 position;
+        in highp vec3 normal;
         in highp vec2 texcoors0;
 
         out highp vec4 v_color;
         out highp vec2 v_texcoors0;
         void main()
         {
-            gl_Position = aspect * projection * modelview * vec4(position,1.0);
-            v_color = vec4(5.0,5.0,5.0,1.0); //objcolor;
+            vec4 worldPos = modelview * vec4(position,1.0);
+            vec4 center = modelview * vec4(0.0, 0.0, 0.0, 1.0);
+            vec4 worldNormal = modelview * vec4(normal, 1.0) - center;
+            gl_Position = aspect * projection * worldPos;
+            vec4 direction = vec4(0.0,0.0,1.0,1.0);
+            highp float c = pow((1.0 - dot(direction.xyz, normalize(worldNormal.xyz))), 4.0) * 2.0;
+            v_color = vec4(c * 1.0, c * 0.9, c * 0.1, 1.0);
             v_texcoors0 = texcoors0;
         }
     """
@@ -104,11 +110,12 @@ class Mesh(geometry.base):
         }
     """
 
-    def __init__(self, mode, vertices, indices, images):
-        self.attributes = { 'position' : 3 }
+    def __init__(self, mode, vertices, normals, indices, images):
+        self.attributes = { 'position' : 3, 'normal': 3 }
 
         self.primitive = mode
         self.vertices = vertices
+        self.normals = normals
         self.indices = indices
         self.textures = []
 
@@ -131,7 +138,7 @@ class Mesh(geometry.base):
         return tex
 
     def getVertices(self):
-        vertAttribs = { 'position' : self.vertices }
+        vertAttribs = { 'position' : self.vertices, 'normal': self.normals }
         for i, texture in enumerate(self.textures):
             vertAttribs['texcoors%d' % i] = texture[1]
 
@@ -156,17 +163,36 @@ class Mesh(geometry.base):
         gl.glDisable(gl.GL_DEPTH_TEST)
 
 class gltf(assembly.assembly):
-    def __init__(self, filename):
+    def __init__(self, filename, nodeName = None):
         self.gltf = gltf = GLTF2().load(filename)
-        self.nodeid = gltf.scenes[gltf.scene].nodes[2]
-        self.node = gltf.nodes[self.nodeid]
         self.modelview = np.eye(4, dtype=np.float32)
-        print(self.node)
-        mesh = gltf.meshes[self.node.mesh]
-        primitive = mesh.primitives[0]
 
-        vertices = self.readFromAccessor(gltf, primitive.attributes.POSITION)
-        indices = self.readFromAccessor(gltf, primitive.indices)
+        if nodeName:
+            self.node = self.getNodeByName(nodeName)
+            print(self.node)
+            mesh = gltf.meshes[self.node.mesh]
+            primitive = mesh.primitives[0]
+
+            vertices = self.readFromAccessor(gltf, primitive.attributes.POSITION)
+            normals = self.readFromAccessor(gltf, primitive.attributes.NORMAL)
+            indices = self.readFromAccessor(gltf, primitive.indices)
+
+            images = []
+
+            for image in gltf.images[:1]: # only one texture for now
+                texcoors = self.readFromAccessor(gltf, primitive.attributes.TEXCOORD_0)
+
+                bufferView = gltf.bufferViews[image.bufferView]
+                buffer = gltf.buffers[bufferView.buffer]
+                data = gltf.get_data_from_buffer_uri(buffer.uri)
+                stream = BytesIO(data)
+                im = Image.open(stream)
+                im.tobytes()
+                images.append((im, texcoors))
+
+            self.geometry = Mesh(primitive.mode, vertices, normals, indices, images)
+        else:
+            self.geometry = None
 
         self.animations = []
         for animation in gltf.animations:
@@ -187,31 +213,6 @@ class gltf(assembly.assembly):
 
             self.animations.append(animSamplers)
 
-        camera_node = self.getNodeByName('Camera')
-        self.view = np.eye(4, dtype=np.float32)
-#        transforms.rotate(self.view, -100, 0, 1, 0)
-#        if camera_node.rotation:
-#            transforms.rotateQ(self.view, camera_node.rotation[0], camera_node.rotation[1], camera_node.rotation[2], camera_node.rotation[3] )
-#            transforms.rotate(self.view, -50, 0.82, -0.39, 0.39)
-#        if camera_node.translation:
-#            transforms.translate(self.view, *camera_node.translation)
-#        if camera_node.scale:
-#            transforms.scale(self.view, *camera_node.scale)
-
-        images = []
-
-        for image in gltf.images[:1]: # only one texture for now
-            texcoors = self.readFromAccessor(gltf, primitive.attributes.TEXCOORD_0)
-
-            bufferView = gltf.bufferViews[image.bufferView]
-            buffer = gltf.buffers[bufferView.buffer]
-            data = gltf.get_data_from_buffer_uri(buffer.uri)
-            stream = BytesIO(data)
-            im = Image.open(stream)
-            im.tobytes()
-            images.append((im, texcoors))
-
-        self.geometry = Mesh(primitive.mode, vertices, indices, images)
 
     def getNodeByName(self, name):
         found = [node for node in self.gltf.nodes if node.name == name]
@@ -355,9 +356,10 @@ class gltf(assembly.assembly):
         self.apply_animations(t)
 
         view = np.eye(4, dtype=np.float32)
-        model = self.getModel(self.getNodeByName('Cube'))
+        model = self.getModel(self.node)
 
         self.geometry.time = t
+        self.geometry.color = self.color
         self.geometry.modelview = np.dot(model, self.modelview)
         self.geometry.render()
 

@@ -29,6 +29,7 @@ class newyear(assembly.assembly):
             uniform vec4 objcolor;
             uniform float time;
             uniform float lifetime;
+            uniform vec3 autoFocus;
 
             uniform sampler2D positionTex;
             uniform sampler2D colorTex;
@@ -36,8 +37,7 @@ class newyear(assembly.assembly):
 
             in highp vec2 position;
             in highp vec2 texcoor;
-            uniform highp float focusdist;
-            
+
             out highp vec4 v_color;
             out highp vec2 v_texcoor;
             void main()
@@ -48,6 +48,8 @@ class newyear(assembly.assembly):
 
                 highp vec4 projectedCenter = projection * aspect * modelview * vec4(center, 1.0);
                 highp vec4 prevProjectedCenter = projection * aspect * modelview * rotation * vec4(center, 1.0);
+                highp vec4 worldAutofocus = modelview * vec4(autoFocus, 1.0);
+                highp float focusdist = -worldAutofocus.z;
                 highp float rmbscale = 100.0;  // Increase to make it more pronounced.
 
                 highp float scale = abs((projectedCenter.z - focusdist) * 0.01);
@@ -64,7 +66,7 @@ class newyear(assembly.assembly):
                 highp float depthSample = texture(depthTex, (0.5 * gl_Position.xy / gl_Position.w) + vec2(0.5)).x;
                 depthSample = 2.0 * depthSample - 1.0;
                 highp float zLinear = 2.0 * near * far / (far + near - depthSample * (far - near));
-                if (zLinear < gl_Position.z) {
+                if (zLinear - 1.0 < projectedCenter.z) {
                     v_color = vec4(0.0, 0.0, 0.0, 1.0);
                     gl_Position = vec4(0.0);
                 } else {
@@ -94,7 +96,7 @@ class newyear(assembly.assembly):
             self.time = 0
             self.lifetime = lifetime
             self.aspect = aspect
-            self.focusdist = 10.0
+            self.autoFocus = (0,0,0)
             self.rotationTransform = self.rotationSpeedToTransform(rotationSpeed)
 
             super(newyear.Stars, self).__init__()
@@ -128,7 +130,7 @@ class newyear(assembly.assembly):
                 'lifetime' : (self.lifetime,), 
                 'aspect': self.aspect,
                 'rotation': self.rotationTransform,
-                'focusdist': (self.focusdist, )
+                'autoFocus': (self.autoFocus)
             }
 
     class VelocityShader(geometry.simple.texquad):
@@ -136,6 +138,8 @@ class newyear(assembly.assembly):
             uniform sampler2D velocityTex;
             uniform sampler2D positionTex;
             uniform highp float dt;
+            uniform highp vec3 singularity;
+
             out highp vec4 f_color;
             in highp vec2 v_texcoor;
             uniform highp float gravity;
@@ -143,9 +147,10 @@ class newyear(assembly.assembly):
 
             void main()
             {
-                highp vec4 currentSpeed = vec4(textureLod(velocityTex, v_texcoor, 0.0).xyz, 1.0);
-                highp vec4 currentPos = vec4(textureLod(positionTex, v_texcoor, 0.0).xyz, 1.0);
-                f_color = currentSpeed * (1.0 - (drag * dt * length(currentSpeed))) - normalize(currentPos) * pow(length(currentPos), -2.0) * dt * gravity;
+                highp vec3 currentSpeed = textureLod(velocityTex, v_texcoor, 0.0).xyz;
+                highp vec3 currentPos = textureLod(positionTex, v_texcoor, 0.0).xyz;
+                highp vec3 dist = currentPos - singularity;
+                f_color = vec4(currentSpeed * (1.0 - (drag * dt * length(currentSpeed))) - normalize(dist) * pow(length(dist), -2.0) * dt * gravity, 1.0);
             }
         """
 
@@ -155,11 +160,12 @@ class newyear(assembly.assembly):
             self.positionTex = None
             self.gravity = 0.000001
             self.drag = 0.001
+            self.singularity = (0,0,0)
 
             super().__init__()
 
         def getUniforms(self):
-            return { 'dt' : (self.dt,), 'gravity': (self.gravity,), 'drag': (self.drag,) }
+            return { 'dt' : (self.dt,), 'gravity': (self.gravity,), 'drag': (self.drag,), 'singularity': self.singularity }
 
         def getTextures(self):
             return { 'velocityTex' : self.velocityTex, 'positionTex': self.positionTex }
