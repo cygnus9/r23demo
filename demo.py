@@ -5,18 +5,18 @@
 # Distributed under the terms of the new BSD License.
 # -----------------------------------------------------------------------------
 import sys
-import ctypes
 import numpy as np
 import OpenGL.GL as gl
 import OpenGL.GLUT as glut
 import math
 import transforms
-import time
 import fbo
 import random
 import argparse
 import numpy
 import pygame
+
+import geometry.simple
 
 # compatibility when we're running from a zip
 import os.path
@@ -30,18 +30,7 @@ def start_music():
     pygame.mixer.music.load('music.ogg')
     pygame.mixer.music.play()
 
-import assembly.copperbar
-import assembly.circles
-import assembly.snow
-#import assembly.sint
-import assembly.matrix
-import assembly.particles
-import assembly.tree
-import assembly.rotate
 import assembly.gltf
-
-import geometry.ws2811
-import geometry.hub75e
 
 bpm = 140
 freq = 500
